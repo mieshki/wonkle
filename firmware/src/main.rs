@@ -2,15 +2,17 @@
 #![no_main]
 #![no_std]
 
-use defmt_rtt as _;
+//use defmt_rtt as _;
 // See https://defmt.ferrous-systems.com/global-logger for more information
-use panic_probe as _; // Print panic message to probe console
+//use panic_probe as _; // Print panic message to probe console
+use panic_halt as _;
 use stm32f4xx_hal::{
-    adc::{Adc, config::AdcConfig},
+    adc::{Adc, config::AdcConfig, config::Resolution},
     otg_fs::USB,
     pac::Peripherals,
     prelude::*,
 };
+use rtt_target::{ rtt_init_print, rprint };
 
 mod sensor;
 mod tablet;
@@ -18,18 +20,28 @@ mod usb;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
+    rtt_init_print!();
+
     let dp = Peripherals::take().unwrap(); // device peripheral
     let rcc = dp.RCC.constrain();
-    let clocks = rcc.cfgr.sysclk(180.MHz()).require_pll48clk().freeze();
+
+    //let clocks = rcc.cfgr.sysclk(180.MHz()).require_pll48clk().freeze();
+    let clocks = rcc.cfgr
+    .sysclk(84.MHz())   // PLL z HSI
+    .freeze();
+
 
     let gpioa = dp.GPIOA.split();
     let gpioc = dp.GPIOC.split();
     let gpioe = dp.GPIOE.split();
     let gpiof = dp.GPIOF.split();
 
+    let mut adc_config = AdcConfig::default();
+    //adc_config = adc_config.resolution(Resolution::Ten);
+
     let mut sensor = sensor::Sensor::new(
-        Adc::adc2(dp.ADC2, true, AdcConfig::default()),
-        Adc::adc3(dp.ADC3, true, AdcConfig::default()),
+        Adc::adc2(dp.ADC2, true, adc_config), //AdcConfig::default()),
+        Adc::adc3(dp.ADC3, true, adc_config), //AdcConfig::default()),
         gpioe.pe6.into_push_pull_output(),
         gpioe.pe5.into_push_pull_output(),
         gpioe.pe4.into_push_pull_output(),
@@ -55,28 +67,16 @@ fn main() -> ! {
         gpioc.pc5.into_analog(),
     );
 
-    usb::setup(USB {
-        usb_global: dp.OTG_FS_GLOBAL,
-        usb_device: dp.OTG_FS_DEVICE,
-        usb_pwrclk: dp.OTG_FS_PWRCLK,
-        pin_dm: gpioa.pa11.into(),
-        pin_dp: gpioa.pa12.into(),
-        hclk: clocks.hclk(),
-    });
-
-    let mut report = tablet::Report::default();
-
-    let button_pin = gpioe.pe2.into_pull_up_input();
+    // usb::setup(USB {
+    //     usb_global: dp.OTG_FS_GLOBAL,
+    //     usb_device: dp.OTG_FS_DEVICE,
+    //     usb_pwrclk: dp.OTG_FS_PWRCLK,
+    //     pin_dm: gpioa.pa11.into(),
+    //     pin_dp: gpioa.pa12.into(),
+    //     hclk: clocks.hclk(),
+    // });
 
     loop {
-        let (x, y) = sensor.scan();
-        report.x = x;
-        report.y = y;
-
-        defmt::info!("{:06} {:06} {}", x, y, button_pin.is_low() as usize);
-
-        // usb::poll();
-        // usb::push(report).ok().unwrap_or(0);
-        // cortex_m::asm::delay(10_000_000); // uncomment to reduce the log flicker
+        sensor.get_raw_data();
     }
 }

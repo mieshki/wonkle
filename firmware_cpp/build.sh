@@ -10,7 +10,7 @@ if [[ "${1:-}" == "--clean" || "${1:-}" == "-c" ]]; then
 fi
 
 echo "Configuring..."
-cmake -B build -G Ninja
+cmake -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 echo "Building..."
 cmake --build build

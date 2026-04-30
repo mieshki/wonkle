@@ -3,3 +3,4 @@
 /.devenv*
 /.direnv*
 firmware_cpp/build/
+compile_commands.json

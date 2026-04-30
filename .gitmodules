@@ -1,0 +1,9 @@
+[submodule "firmware_cpp/core/cmsis5"]
+	path = firmware_cpp/core/cmsis5
+	url = https://github.com/ARM-software/CMSIS_5.git
+[submodule "firmware_cpp/core/stm32f4_cmsis"]
+	path = firmware_cpp/core/stm32f4_cmsis
+	url = https://github.com/STMicroelectronics/cmsis_device_f4.git
+[submodule "firmware_cpp/core/stm32f4_hal"]
+	path = firmware_cpp/core/stm32f4_hal
+	url = https://github.com/STMicroelectronics/stm32f4xx_hal_driver.git

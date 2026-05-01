@@ -1,31 +1,24 @@
 #!/usr/bin/env python3
 """
-Enhanced Wonkle Sensor Grid Visualizer with SOTA Cursor Position Estimation.
+Wonkle Sensor Grid Visualizer — Weighted Centroid Only.
 
-Extends the original visualize_grid.py with multiple sub-pixel cursor detection
-algorithms, interactive algorithm switching, and real-time coordinate display.
+Reads the sensor grid from device RAM via pyOCD and renders
+a real-time heatmap with weighted centroid cursor position.
 
 Usage:
     python visualize_grid_with_cursor.py <elf_file>
 
 Controls:
-    1 - Weighted Centroid (baseline, matches firmware)
-    2 - Separable Parabolic Interpolation (sub-pixel, fast)
-    3 - 2D Gaussian Peak Fit (sub-pixel, most accurate)
-    4 - Iterative Windowed Centroid (reduces edge bias)
-    5 - Local Windowed Centroid (eliminates distant-sensor pull)
-    A - Toggle adaptive threshold (threshold = 50% of peak value)
     S - Toggle show/hide cursor
     H - Toggle show/hide heatmap
     T - Toggle sensor value text overlay
-    +/- - Adjust fixed detection threshold
+    +/- - Adjust detection threshold
     ESC / Q - Quit
 """
 
 import sys
 import struct
 import time
-from enum import IntEnum
 from typing import Optional, Tuple
 
 import numpy as np
@@ -40,16 +33,7 @@ INIT_WIDTH = 1140
 INIT_HEIGHT = 660
 
 ADC_MIDPOINT = 2048
-DEFAULT_THRESHOLD = 2300
-SUBPIXEL_FACTOR = 100.0
-
-
-class Algorithm(IntEnum):
-    CENTROID = 1
-    PARABOLIC = 2
-    GAUSSIAN_FIT = 3
-    ITERATIVE_WINDOW = 4
-    LOCAL_CENTROID = 5
+DEFAULT_THRESHOLD = 2200
 
 
 def hsv_to_rgb(h_degrees: float, saturation: float, value: float) -> Tuple[int, int, int]:
@@ -84,10 +68,6 @@ def adc_to_heatmap_color(adc_value: int) -> Tuple[int, int, int]:
     return hsv_to_rgb(hue, 1.0, 1.0)
 
 
-def threshold_signal(val: int, threshold: int) -> int:
-    return max(0, val - threshold)
-
-
 def estimate_centroid(
     grid: np.ndarray, threshold: int
 ) -> Optional[Tuple[float, float]]:
@@ -105,171 +85,6 @@ def estimate_centroid(
     cx = sum_x / total
     cy = sum_y / total
     return (cx, cy)
-
-
-def estimate_parabolic(
-    grid: np.ndarray, threshold: int
-) -> Optional[Tuple[float, float]]:
-    vals = np.maximum(grid.astype(np.float64) - threshold, 0.0)
-    if vals.max() <= 0:
-        return None
-
-    coarse = estimate_centroid(grid, threshold)
-    if coarse is None:
-        return None
-
-    cy_int, cx_int = int(round(coarse[1])), int(round(coarse[0]))
-    cy_int = np.clip(cy_int, 0, SENSOR_ROWS - 1)
-    cx_int = np.clip(cx_int, 0, SENSOR_COLS - 1)
-
-    row = vals[cy_int, :]
-    cx = float(cx_int)
-    if 0 < cx_int < SENSOR_COLS - 1:
-        vm1 = row[cx_int - 1]
-        v0 = row[cx_int]
-        vp1 = row[cx_int + 1]
-        denom = vm1 - 2.0 * v0 + vp1
-        if abs(denom) > 1e-6:
-            cx = cx_int + 0.5 * (vm1 - vp1) / denom
-
-    col = vals[:, cx_int]
-    cy = float(cy_int)
-    if 0 < cy_int < SENSOR_ROWS - 1:
-        vm1 = col[cy_int - 1]
-        v0 = col[cy_int]
-        vp1 = col[cy_int + 1]
-        denom = vm1 - 2.0 * v0 + vp1
-        if abs(denom) > 1e-6:
-            cy = cy_int + 0.5 * (vm1 - vp1) / denom
-
-    return (cx, cy)
-
-
-def estimate_gaussian_fit(
-    grid: np.ndarray, threshold: int, window: int = 3
-) -> Optional[Tuple[float, float]]:
-    vals = np.maximum(grid.astype(np.float64) - threshold, 0.0)
-    if vals.max() <= 0:
-        return None
-
-    peak_y, peak_x = np.unravel_index(np.argmax(vals), vals.shape)
-
-    half = window // 2
-    y0 = max(0, peak_y - half)
-    y1 = min(SENSOR_ROWS, peak_y + half + 1)
-    x0 = max(0, peak_x - half)
-    x1 = min(SENSOR_COLS, peak_x + half + 1)
-
-    local = vals[y0:y1, x0:x1]
-    mask = local > 0
-    if mask.sum() < 6:
-        return estimate_centroid(grid, threshold)
-
-    ys, xs = np.where(mask)
-    ys = ys + y0
-    xs = xs + x0
-    zs = local[mask]
-
-    log_z = np.log(zs + 1e-6)
-
-    A = np.column_stack((xs * xs, ys * ys, xs, ys, np.ones_like(xs)))
-
-    try:
-        coeff, *_ = np.linalg.lstsq(A, log_z, rcond=None)
-    except np.linalg.LinAlgError:
-        return estimate_centroid(grid, threshold)
-
-    a, b, c, d, _ = coeff
-    cx = -c / (2.0 * a) if abs(a) > 1e-6 and a < 0 else float(peak_x)
-    cy = -d / (2.0 * b) if abs(b) > 1e-6 and b < 0 else float(peak_y)
-
-    cx = max(-0.5, min(SENSOR_COLS - 0.5, cx))
-    cy = max(-0.5, min(SENSOR_ROWS - 0.5, cy))
-
-    return (cx, cy)
-
-
-def estimate_iterative_window(
-    grid: np.ndarray,
-    threshold: int,
-    iterations: int = 5,
-    window_sigma: float = 1.5,
-) -> Optional[Tuple[float, float]]:
-    vals = np.maximum(grid.astype(np.float64) - threshold, 0.0)
-    if vals.max() <= 0:
-        return None
-
-    coarse = estimate_centroid(grid, threshold)
-    if coarse is None:
-        return None
-
-    cx, cy = coarse
-    rows = np.arange(SENSOR_ROWS, dtype=np.float64)
-    cols = np.arange(SENSOR_COLS, dtype=np.float64)
-    col_grid, row_grid = np.meshgrid(cols, rows)
-
-    for _ in range(iterations):
-        wx = np.exp(-0.5 * ((col_grid - cx) / window_sigma) ** 2)
-        wy = np.exp(-0.5 * ((row_grid - cy) / window_sigma) ** 2)
-        weights = wx * wy
-
-        weighted = vals * weights
-        total = weighted.sum()
-        if total <= 0:
-            break
-
-        cx = (weighted * col_grid).sum() / total
-        cy = (weighted * row_grid).sum() / total
-
-    return (cx, cy)
-
-
-def estimate_local_centroid(
-    grid: np.ndarray, threshold: int, window: int = 3
-) -> Optional[Tuple[float, float]]:
-    vals = np.maximum(grid.astype(np.float64) - threshold, 0.0)
-    if vals.max() <= 0:
-        return None
-
-    peak_y, peak_x = np.unravel_index(np.argmax(vals), vals.shape)
-
-    half = window // 2
-    y0 = max(0, peak_y - half)
-    y1 = min(SENSOR_ROWS, peak_y + half + 1)
-    x0 = max(0, peak_x - half)
-    x1 = min(SENSOR_COLS, peak_x + half + 1)
-
-    local = vals[y0:y1, x0:x1]
-    local_rows = np.arange(y0, y1, dtype=np.float64)
-    local_cols = np.arange(x0, x1, dtype=np.float64)
-
-    total = local.sum()
-    if total <= 0:
-        return None
-
-    sum_x = (local.sum(axis=0) * local_cols).sum()
-    sum_y = (local.sum(axis=1) * local_rows).sum()
-
-    cx = sum_x / total
-    cy = sum_y / total
-    return (cx, cy)
-
-
-ESTIMATORS = {
-    Algorithm.CENTROID: estimate_centroid,
-    Algorithm.PARABOLIC: estimate_parabolic,
-    Algorithm.GAUSSIAN_FIT: estimate_gaussian_fit,
-    Algorithm.ITERATIVE_WINDOW: estimate_iterative_window,
-    Algorithm.LOCAL_CENTROID: estimate_local_centroid,
-}
-
-ALGORITHM_NAMES = {
-    Algorithm.CENTROID: "Weighted Centroid",
-    Algorithm.PARABOLIC: "Parabolic Interpolation",
-    Algorithm.GAUSSIAN_FIT: "2D Gaussian Fit",
-    Algorithm.ITERATIVE_WINDOW: "Iterative Windowed",
-    Algorithm.LOCAL_CENTROID: "Local Windowed Centroid",
-}
 
 
 def draw_cursor(
@@ -305,13 +120,10 @@ def main():
     font = pygame.font.SysFont(None, 18)
     font_small = pygame.font.SysFont(None, 14)
 
-    current_algorithm = Algorithm.GAUSSIAN_FIT
     show_cursor = True
     show_heatmap = True
     show_text = False
     threshold = DEFAULT_THRESHOLD
-    adaptive_threshold = False
-    adaptive_fraction = 0.5
 
     with ConnectHelper.session_with_chosen_probe(target="stm32f429igtx") as session:
         session.options["frequency"] = 10000000
@@ -336,18 +148,6 @@ def main():
                 elif event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_ESCAPE, pygame.K_q):
                         running = False
-                    elif event.key == pygame.K_1:
-                        current_algorithm = Algorithm.CENTROID
-                    elif event.key == pygame.K_2:
-                        current_algorithm = Algorithm.PARABOLIC
-                    elif event.key == pygame.K_3:
-                        current_algorithm = Algorithm.GAUSSIAN_FIT
-                    elif event.key == pygame.K_4:
-                        current_algorithm = Algorithm.ITERATIVE_WINDOW
-                    elif event.key == pygame.K_5:
-                        current_algorithm = Algorithm.LOCAL_CENTROID
-                    elif event.key == pygame.K_a:
-                        adaptive_threshold = not adaptive_threshold
                     elif event.key == pygame.K_s:
                         show_cursor = not show_cursor
                     elif event.key == pygame.K_h:
@@ -364,11 +164,6 @@ def main():
             )
             vals = struct.unpack(f"<{SENSOR_ROWS * SENSOR_COLS}H", bytes(data))
             grid = np.array(vals, dtype=np.uint16).reshape(SENSOR_ROWS, SENSOR_COLS)
-
-            active_threshold = threshold
-            if adaptive_threshold:
-                peak = int(grid.max())
-                active_threshold = max(0, int(peak * adaptive_fraction))
 
             width, height = screen.get_size()
             cell_w = width // SENSOR_COLS
@@ -393,8 +188,7 @@ def main():
                         )
                         screen.blit(text_surf, text_rect)
 
-            estimator = ESTIMATORS[current_algorithm]
-            cursor_pos = estimator(grid, active_threshold)
+            cursor_pos = estimate_centroid(grid, threshold)
 
             if show_cursor and cursor_pos is not None:
                 draw_cursor(screen, cursor_pos, cell_w, cell_h, color=(255, 50, 50))
@@ -402,22 +196,10 @@ def main():
             fps_surface = font.render(f"FPS: {fps:.1f}", True, (255, 255, 0))
             screen.blit(fps_surface, (4, 4))
 
-            algo_surface = font.render(
-                f"Algo: {ALGORITHM_NAMES[current_algorithm]} (press 1-5)",
-                True,
-                (0, 255, 255),
+            thresh_surface = font.render(
+                f"Threshold: {threshold} (+/- to adjust)", True, (255, 128, 0)
             )
-            screen.blit(algo_surface, (4, 22))
-
-            if adaptive_threshold:
-                thresh_surface = font.render(
-                    f"Threshold: ADAPTIVE ({active_threshold}) [A]", True, (0, 255, 128)
-                )
-            else:
-                thresh_surface = font.render(
-                    f"Threshold: {threshold} (+/- to adjust) [A]", True, (255, 128, 0)
-                )
-            screen.blit(thresh_surface, (4, 40))
+            screen.blit(thresh_surface, (4, 22))
 
             if cursor_pos is not None:
                 coord_surface = font.render(
@@ -427,10 +209,10 @@ def main():
                 )
             else:
                 coord_surface = font.render("Cursor: None (no pen)", True, (255, 0, 0))
-            screen.blit(coord_surface, (4, 58))
+            screen.blit(coord_surface, (4, 40))
 
             help_surface = font.render(
-                "[1-5]Algo  [A]daptive  [S]how  [H]eatmap  [T]ext  [+/-]Thresh  [ESC]Quit",
+                "[S]how  [H]eatmap  [T]ext  [+/-]Thresh  [ESC]Quit",
                 True,
                 (128, 128, 128),
             )

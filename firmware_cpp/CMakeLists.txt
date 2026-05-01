@@ -12,6 +12,9 @@ set(CORE_SOURCES
     core/stm32f4_hal/Src/stm32f4xx_hal_gpio.c
     core/stm32f4_hal/Src/stm32f4xx_hal_rcc.c
     core/stm32f4_hal/Src/stm32f4xx_hal_cortex.c
+    core/stm32f4_hal/Src/stm32f4xx_hal_dma.c
+    core/stm32f4_hal/Src/stm32f4xx_hal_adc.c
+    core/stm32f4_hal/Src/stm32f4xx_hal_adc_ex.c
 )
 
 set(APP_SOURCES
@@ -19,6 +22,7 @@ set(APP_SOURCES
     app/board.cpp
     app/rtt.cpp
     app/systick.cpp
+    app/sensor.cpp
     app/SEGGER_RTT.c
 )
 

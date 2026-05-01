@@ -13,6 +13,8 @@
 #define HAL_CORTEX_MODULE_ENABLED
 #define HAL_FLASH_MODULE_ENABLED
 #define HAL_PWR_MODULE_ENABLED
+#define HAL_DMA_MODULE_ENABLED
+#define HAL_ADC_MODULE_ENABLED
 
 #define HSE_VALUE    ((uint32_t)8000000U)
 #define HSI_VALUE    ((uint32_t)16000000U)
@@ -47,6 +49,14 @@
 
 #ifdef HAL_PWR_MODULE_ENABLED
   #include "stm32f4xx_hal_pwr.h"
+#endif
+
+#ifdef HAL_DMA_MODULE_ENABLED
+  #include "stm32f4xx_hal_dma.h"
+#endif
+
+#ifdef HAL_ADC_MODULE_ENABLED
+  #include "stm32f4xx_hal_adc.h"
 #endif
 
 #ifdef __cplusplus

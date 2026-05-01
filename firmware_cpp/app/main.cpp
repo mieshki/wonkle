@@ -37,8 +37,12 @@ static void SystemClock_Config(void) {
 }
 
 uint16_t g_grid[Sensor::ROW_LEN * Sensor::COL_LEN];
+float g_cursor_x = 0.0f;
+float g_cursor_y = 0.0f;
+uint8_t g_cursor_valid = 0;
 
-// looks like best is weighted centroid with 2200 threshold
+static constexpr bool kDebugMode = false; //true;
+
 int main() {
     RTT::init();
     RTT::printf("Hello from Wonkle C++!\n");
@@ -53,14 +57,34 @@ int main() {
 
     while (true) {
         Sensor::scan(g_grid);
-        RTT::printf("===GRID===\n");
-        for (uint8_t r = 0; r < Sensor::ROW_LEN; r++) {
-            RTT::printf("R%02u:", r);
-            for (uint8_t c = 0; c < Sensor::COL_LEN; c++) {
-                RTT::printf(" %u", g_grid[r * Sensor::COL_LEN + c]);
+
+        if (kDebugMode) {
+            RTT::printf("===GRID===\n");
+            for (uint8_t r = 0; r < Sensor::ROW_LEN; r++) {
+                RTT::printf("R%02u:", r);
+                for (uint8_t c = 0; c < Sensor::COL_LEN; c++) {
+                    RTT::printf(" %u", g_grid[r * Sensor::COL_LEN + c]);
+                }
+                RTT::printf("\n");
             }
-            RTT::printf("\n");
+            RTT::printf("===END===\n");
+        } else {
+            auto cursor = Sensor::find_center(g_grid);
+            g_cursor_x = cursor.x;
+            g_cursor_y = cursor.y;
+            g_cursor_valid = cursor.valid ? 1 : 0;
+
+            if (cursor.valid) {
+                int x_i = static_cast<int>(cursor.x);
+                int x_f = static_cast<int>((cursor.x - x_i) * 100);
+                if (x_f < 0) x_f = -x_f;
+                int y_i = static_cast<int>(cursor.y);
+                int y_f = static_cast<int>((cursor.y - y_i) * 100);
+                if (y_f < 0) y_f = -y_f;
+                RTT::printf("CURSOR: X=%d.%02d Y=%d.%02d\n", x_i, x_f, y_i, y_f);
+            } else {
+                RTT::printf("CURSOR: NONE\n");
+            }
         }
-        RTT::printf("===END===\n");
     }
 }

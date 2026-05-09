@@ -43,7 +43,8 @@ float g_cursor_y = 0.0f;
 uint8_t g_cursor_valid = 0;
 uint32_t g_frame = 0;
 
-static constexpr bool kDebugMode = false; //true;
+static constexpr bool kDebugMode = false;
+static constexpr bool kVerbose   = false;
 
 int main() {
     RTT::init();
@@ -59,6 +60,10 @@ int main() {
 
     USB::init();
     RTT::printf("USB init done\n");
+
+    uint32_t last_tick = HAL_GetTick();
+    uint32_t last_frame = 0;
+    bool had_valid_in_second = false;
 
     while (true) {
         Sensor::scan(g_grid);
@@ -80,6 +85,8 @@ int main() {
             g_cursor_valid = cursor.valid ? 1 : 0;
 
             if (cursor.valid) {
+                had_valid_in_second = true;
+
                 uint16_t grid_max = 0;
                 uint16_t grid_min = 65535U;
                 uint16_t active_pixels = 0;
@@ -95,21 +102,33 @@ int main() {
                 if (x_usb > 10000) x_usb = 10000;
                 if (y_usb > 10000) y_usb = 10000;
 
-                USB::send_report(x_usb, y_usb, true, false); //true);
+                USB::send_report(x_usb, y_usb, true, false);
 
-                RTT::printf("N F=%u X=%u.%02u Y=%u.%02u AP=%u MX=%u MN=%u\n",
-                    static_cast<unsigned>(g_frame),
-                    static_cast<unsigned>(cursor.x),
-                    static_cast<unsigned>((cursor.x - static_cast<int>(cursor.x)) * 100.0f) % 100U,
-                    static_cast<unsigned>(cursor.y),
-                    static_cast<unsigned>((cursor.y - static_cast<int>(cursor.y)) * 100.0f) % 100U,
-                    static_cast<unsigned>(active_pixels),
-                    static_cast<unsigned>(grid_max),
-                    static_cast<unsigned>(grid_min));
+                if (kVerbose) {
+                    RTT::printf("N F=%u X=%u.%02u Y=%u.%02u AP=%u MX=%u MN=%u\n",
+                        static_cast<unsigned>(g_frame),
+                        static_cast<unsigned>(cursor.x),
+                        static_cast<unsigned>((cursor.x - static_cast<int>(cursor.x)) * 100.0f) % 100U,
+                        static_cast<unsigned>(cursor.y),
+                        static_cast<unsigned>((cursor.y - static_cast<int>(cursor.y)) * 100.0f) % 100U,
+                        static_cast<unsigned>(active_pixels),
+                        static_cast<unsigned>(grid_max),
+                        static_cast<unsigned>(grid_min));
+                }
             } else {
                 USB::send_report(0, 0, false, false);
             }
         }
         g_frame++;
+
+        uint32_t now = HAL_GetTick();
+        if (now - last_tick >= 1000) {
+            if (had_valid_in_second) {
+                RTT::printf("HZ: %u\n", static_cast<unsigned>(g_frame - last_frame));
+            }
+            last_frame = g_frame;
+            last_tick = now;
+            had_valid_in_second = false;
+        }
     }
 }

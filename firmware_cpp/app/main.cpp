@@ -4,6 +4,7 @@ extern "C" {
 
 #include "rtt.hpp"
 #include "sensor.hpp"
+#include "usb.hpp"
 
 static void Error_Handler(void) {
     while (1) { __NOP(); }
@@ -40,6 +41,7 @@ uint16_t g_grid[Sensor::ROW_LEN * Sensor::COL_LEN];
 float g_cursor_x = 0.0f;
 float g_cursor_y = 0.0f;
 uint8_t g_cursor_valid = 0;
+uint32_t g_frame = 0;
 
 static constexpr bool kDebugMode = false; //true;
 
@@ -54,6 +56,9 @@ int main() {
 
     Sensor::init();
     RTT::printf("Sensor init done\n");
+
+    USB::init();
+    RTT::printf("USB init done\n");
 
     while (true) {
         Sensor::scan(g_grid);
@@ -75,16 +80,36 @@ int main() {
             g_cursor_valid = cursor.valid ? 1 : 0;
 
             if (cursor.valid) {
-                int x_i = static_cast<int>(cursor.x);
-                int x_f = static_cast<int>((cursor.x - x_i) * 100);
-                if (x_f < 0) x_f = -x_f;
-                int y_i = static_cast<int>(cursor.y);
-                int y_f = static_cast<int>((cursor.y - y_i) * 100);
-                if (y_f < 0) y_f = -y_f;
-                RTT::printf("CURSOR: X=%d.%02d Y=%d.%02d\n", x_i, x_f, y_i, y_f);
+                uint16_t grid_max = 0;
+                uint16_t grid_min = 65535U;
+                uint16_t active_pixels = 0;
+                for (uint16_t i = 0; i < Sensor::ROW_LEN * Sensor::COL_LEN; i++) {
+                    uint16_t v = g_grid[i];
+                    if (v > grid_max) grid_max = v;
+                    if (v < grid_min) grid_min = v;
+                    if (v > 2200U) active_pixels++;
+                }
+
+                uint16_t x_usb = static_cast<uint16_t>(cursor.x * 10000.0f / 18.0f);
+                uint16_t y_usb = static_cast<uint16_t>(cursor.y * 10000.0f / 10.0f);
+                if (x_usb > 10000) x_usb = 10000;
+                if (y_usb > 10000) y_usb = 10000;
+
+                USB::send_report(x_usb, y_usb, true, false); //true);
+
+                RTT::printf("N F=%u X=%u.%02u Y=%u.%02u AP=%u MX=%u MN=%u\n",
+                    static_cast<unsigned>(g_frame),
+                    static_cast<unsigned>(cursor.x),
+                    static_cast<unsigned>((cursor.x - static_cast<int>(cursor.x)) * 100.0f) % 100U,
+                    static_cast<unsigned>(cursor.y),
+                    static_cast<unsigned>((cursor.y - static_cast<int>(cursor.y)) * 100.0f) % 100U,
+                    static_cast<unsigned>(active_pixels),
+                    static_cast<unsigned>(grid_max),
+                    static_cast<unsigned>(grid_min));
             } else {
-                RTT::printf("CURSOR: NONE\n");
+                USB::send_report(0, 0, false, false);
             }
         }
+        g_frame++;
     }
 }

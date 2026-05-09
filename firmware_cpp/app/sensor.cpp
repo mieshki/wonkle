@@ -1,5 +1,7 @@
 #include "sensor.hpp"
 #include "stm32f4xx_hal.h"
+#include "rtt.hpp"
+
 
 static ADC_HandleTypeDef hadc2;
 static ADC_HandleTypeDef hadc3;
@@ -160,18 +162,32 @@ Sensor::Cursor Sensor::find_center(const uint16_t* grid, uint16_t threshold) {
     float sum_x = 0.0f;
     float sum_y = 0.0f;
     float total = 0.0f;
+    uint8_t active_count = 0;
+    uint8_t clustered_count = 0;
 
     for (uint8_t r = 0; r < ROW_LEN; r++) {
         for (uint8_t c = 0; c < COL_LEN; c++) {
             uint16_t raw = grid[r * COL_LEN + c];
-            float val = (raw > threshold) ? static_cast<float>(raw - threshold) : 0.0f;
-            sum_x += val * static_cast<float>(c);
-            sum_y += val * static_cast<float>(r);
-            total += val;
+            if (raw > threshold) {
+                active_count++;
+                bool has_neighbor = false;
+                if (r > 0 && grid[(r - 1) * COL_LEN + c] > threshold) has_neighbor = true;
+                if (r < ROW_LEN - 1 && grid[(r + 1) * COL_LEN + c] > threshold) has_neighbor = true;
+                if (c > 0 && grid[r * COL_LEN + (c - 1)] > threshold) has_neighbor = true;
+                if (c < COL_LEN - 1 && grid[r * COL_LEN + (c + 1)] > threshold) has_neighbor = true;
+
+                if (has_neighbor) {
+                    clustered_count++;
+                    float val = static_cast<float>(raw - threshold);
+                    sum_x += val * static_cast<float>(c);
+                    sum_y += val * static_cast<float>(r);
+                    total += val;
+                }
+            }
         }
     }
 
-    if (total > 0.0f) {
+    if (clustered_count >= 3 && total > 0.0f) {
         return { sum_x / total, sum_y / total, true };
     }
     return { 0.0f, 0.0f, false };

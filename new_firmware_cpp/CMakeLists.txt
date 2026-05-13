@@ -7,8 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ── Core sources (submodules + vendored) ────────────────────────────
 set(CORE_SOURCES
-     core/logger/SEGGER_RTT.c
-     core/stm32f4_cmsis/Source/Templates/gcc/startup_stm32f429xx.s
+      core/logger/SEGGER_RTT.c
+      core/usb_device/Src/usbd_core.c
+      core/usb_device/Src/usbd_ctlreq.c
+      core/usb_device/Src/usbd_hid.c
+      core/usb_device/Src/usbd_ioreq.c
+      core/stm32f4_cmsis/Source/Templates/gcc/startup_stm32f429xx.s
     core/stm32f4_cmsis/Source/Templates/system_stm32f4xx.c
     core/stm32f4_hal/Src/stm32f4xx_hal.c
     core/stm32f4_hal/Src/stm32f4xx_hal_gpio.c
@@ -32,13 +36,14 @@ set(SRC_SOURCES
 add_executable(${PROJECT_NAME}.elf ${CORE_SOURCES} ${SRC_SOURCES})
 
 target_include_directories(${PROJECT_NAME}.elf PRIVATE
-     core
-     core/logger
-     core/cmsis5/CMSIS/Core/Include
-     core/stm32f4_cmsis/Include
-     core/stm32f4_hal/Inc
-     src
-     src/logger
+      core
+      core/logger
+      core/usb_device/Inc
+      core/cmsis5/CMSIS/Core/Include
+      core/stm32f4_cmsis/Include
+      core/stm32f4_hal/Inc
+      src
+      src/logger
  )
 
 target_compile_definitions(${PROJECT_NAME}.elf PRIVATE

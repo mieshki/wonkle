@@ -7,31 +7,33 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ── Core sources (submodules + vendored) ────────────────────────────
 set(CORE_SOURCES
-      core/logger/SEGGER_RTT.c
-      core/usb_device/Src/usbd_core.c
-      core/usb_device/Src/usbd_ctlreq.c
-      core/usb_device/Src/usbd_hid.c
-      core/usb_device/Src/usbd_ioreq.c
-      core/stm32f4_cmsis/Source/Templates/gcc/startup_stm32f429xx.s
-    core/stm32f4_cmsis/Source/Templates/system_stm32f4xx.c
-    core/stm32f4_hal/Src/stm32f4xx_hal.c
-    core/stm32f4_hal/Src/stm32f4xx_hal_gpio.c
-    core/stm32f4_hal/Src/stm32f4xx_hal_rcc.c
-    core/stm32f4_hal/Src/stm32f4xx_hal_cortex.c
-    core/stm32f4_hal/Src/stm32f4xx_hal_dma.c
-    core/stm32f4_hal/Src/stm32f4xx_hal_adc.c
-    core/stm32f4_hal/Src/stm32f4xx_hal_adc_ex.c
-    core/stm32f4_hal/Src/stm32f4xx_hal_pcd.c
-    core/stm32f4_hal/Src/stm32f4xx_hal_pcd_ex.c
-    core/stm32f4_hal/Src/stm32f4xx_ll_usb.c
-)
+       core/logger/SEGGER_RTT.c
+       core/usb_device/Src/usbd_conf.c
+       core/usb_device/Src/usbd_core.c
+       core/usb_device/Src/usbd_ctlreq.c
+       core/usb_device/Src/usbd_desc.c
+       core/usb_device/Src/usbd_hid.c
+       core/usb_device/Src/usbd_ioreq.c
+       core/stm32f4_cmsis/Source/Templates/gcc/startup_stm32f429xx.s
+     core/stm32f4_cmsis/Source/Templates/system_stm32f4xx.c
+     core/stm32f4_hal/Src/stm32f4xx_hal.c
+     core/stm32f4_hal/Src/stm32f4xx_hal_gpio.c
+     core/stm32f4_hal/Src/stm32f4xx_hal_rcc.c
+     core/stm32f4_hal/Src/stm32f4xx_hal_cortex.c
+     core/stm32f4_hal/Src/stm32f4xx_hal_dma.c
+     core/stm32f4_hal/Src/stm32f4xx_hal_adc.c
+     core/stm32f4_hal/Src/stm32f4xx_hal_adc_ex.c
+     core/stm32f4_hal/Src/stm32f4xx_hal_pcd.c
+     core/stm32f4_hal/Src/stm32f4xx_hal_pcd_ex.c
+     core/stm32f4_hal/Src/stm32f4xx_ll_usb.c
+  )
 
 # ── Application sources ─────────────────────────────────────────────
 set(SRC_SOURCES
-     src/main.cpp
-     src/systick.cpp
-     src/logger/rtt.cpp
- )
+      src/main.cpp
+      src/systick.cpp
+      src/logger/rtt.cpp
+  )
 
 add_executable(${PROJECT_NAME}.elf ${CORE_SOURCES} ${SRC_SOURCES})
 

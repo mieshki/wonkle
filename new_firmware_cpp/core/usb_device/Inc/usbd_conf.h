@@ -19,52 +19,51 @@
 #ifndef __USBD_CONF_H
 #define __USBD_CONF_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "stm32f4xx_hal.h"
-
-/* Memory management — static pool for bare-metal (no heap) */
-static uint32_t usbd_mem_pool[4]; /* 16 bytes, enough for HID handle */
-#define USBD_malloc  static_malloc
-#define USBD_free    static_free
-
-static inline void* static_malloc(uint32_t size) {
-    (void)size;
-    return usbd_mem_pool;
-}
-
-static inline void static_free(void *ptr) {
-    (void)ptr;
-}
-
-/*---------- -----------*/
-#define USBD_CFG_MAX_NUM             1U
-#define USBD_MAX_NUM_INTERFACES      1U
-#define USBD_MAX_SUPPORTED_CLASS     1U
-#define USBD_MAX_CLASS_ENDPOINTS     5U
-#define USBD_MAX_CLASS_INTERFACES    5U
-
-/* Debug level */
-#define USBD_DEBUG_LEVEL             0U
-
-/* User callback */
-#define USBD_USER_REGISTER_CALLBACK  0U
-
-/* LPM and BOS support */
-#define USBD_LPM_ENABLED             0U
-#define USBD_CLASS_BOS_ENABLED       0U
-
-/* Support for user-defined string descriptors */
-#define USBD_SUPPORT_USER_STRING_DESC 0U
-#define USBD_CLASS_USER_STRING_DESC   0U
-
-/* Assert */
-#define USBD_ASSERT_PARAM(expr)      ((void)0U)
-
-/* Debug macros */
-#if (USBD_DEBUG_LEVEL > 0U)
 #include <stdio.h>
-#define USBD_ErrLog(...)
+#include <stdlib.h>
+#include <string.h>
+
+#define USBD_MAX_NUM_INTERFACES     1U
+#define USBD_MAX_NUM_CONFIGURATION  1U
+#define USBD_MAX_STR_DESC_SIZ       0x100U
+#define USBD_SELF_POWERED           1U
+#define USBD_DEBUG_LEVEL            0U
+#define USBD_SUPPORT_USER_STRING_DESC 0U
+
+#define USBD_malloc         (void *)USBD_static_malloc
+#define USBD_free           USBD_static_free
+#define USBD_memset         memset
+#define USBD_memcpy         memcpy
+#define USBD_Delay          HAL_Delay
+
+#if (USBD_DEBUG_LEVEL > 0U)
+#define USBD_UsrLog(...)    do { printf(__VA_ARGS__); printf("\n"); } while(0)
 #else
-#define USBD_ErrLog(...)
-#endif /* USBD_DEBUG_LEVEL */
+#define USBD_UsrLog(...)    do {} while(0)
+#endif
+
+#if (USBD_DEBUG_LEVEL > 1U)
+#define USBD_ErrLog(...)    do { printf("ERROR: "); printf(__VA_ARGS__); printf("\n"); } while(0)
+#else
+#define USBD_ErrLog(...)    do {} while(0)
+#endif
+
+#if (USBD_DEBUG_LEVEL > 2U)
+#define USBD_DbgLog(...)    do { printf("DEBUG: "); printf(__VA_ARGS__); printf("\n"); } while(0)
+#else
+#define USBD_DbgLog(...)    do {} while(0)
+#endif
+
+void *USBD_static_malloc(uint32_t size);
+void USBD_static_free(void *p);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __USBD_CONF_H */

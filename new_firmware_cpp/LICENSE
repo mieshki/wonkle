@@ -1,0 +1,58 @@
+MIT License
+
+Copyright (c) 2026 Wonkle Project
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Third-Party Components
+
+The following third-party components are included in this project under their
+respective licenses:
+
+### SEGGER RTT (Real Time Transfer)
+- **Location:** `core/logger/SEGGER_RTT.{c,h,Conf.h}`
+- **Copyright:** (c) 1995 - 2021 SEGGER Microcontroller GmbH
+- **License:** BSD 2-Clause (see headers in source files for full text)
+- **Homepage:** www.segger.com
+
+### STM32F4xx HAL Drivers
+- **Location:** `core/stm32f4_hal/Src/`, `core/stm32f4_hal/Inc/`
+- **Copyright:** (c) 2015 STMicroelectronics (MCD Application Team)
+- **License:** BSD-style (permissive, see file headers)
+- **Homepage:** www.st.com
+
+### STM32F4xx CMSIS
+- **Location:** `core/stm32f4_cmsis/`, `core/cmsis5/`
+- **Copyright:** (c) ARM Limited / STMicroelectronics
+- **License:** Apache-2.0 (CMSIS) / BSD-style (ST device headers)
+- **Homepage:** github.com/ARM-software/CMSIS_5
+
+### ST USB Device Library
+- **Location:** `core/usb_device/{Inc,Src}/`
+- **Copyright:** (c) 2015 STMicroelectronics (MCD Application Team)
+- **License:** BSD-style (permissive, see file headers)
+- **Homepage:** www.st.com
+
+---
+
+*Project source code in `src/` is covered by the MIT License above.
+Third-party source files retain their original licenses as embedded in
+their respective file headers.*

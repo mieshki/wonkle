@@ -118,7 +118,7 @@ void SensorGrid::configureChannel(ADC_HandleTypeDef* hadc, uint8_t channel) {
     ADC_ChannelConfTypeDef sConfig = {};
     sConfig.Channel = channel;
     sConfig.Rank = 1;
-    sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES; //ADC_SAMPLETIME_480CYCLES;
+    sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
     HAL_ADC_ConfigChannel(hadc, &sConfig);
 }
 
@@ -144,4 +144,21 @@ void SensorGrid::selectRow(uint8_t rowIdx) {
     uint32_t mask = (1U << Pins::MUX.s0) | (1U << Pins::MUX.s1)
                   | (1U << Pins::MUX.s2) | (1U << Pins::MUX.s3);
     Pins::MUX.port->ODR = (Pins::MUX.port->ODR & ~mask) | bits;
+}
+
+void SensorGrid::scan_grid(uint16_t* out) {
+    for (uint8_t row = 0; row < Pins::ROWS; ++row) {
+        selectRow(row);
+
+        for (uint8_t col = 0; col < Pins::COLS; ++col) {
+            const auto& c = Pins::COL[col];
+            ADC_TypeDef* adc = c.adc;
+            configureChannel(getAdc(adc), c.ch);
+            SET_BIT(adc->CR2, ADC_CR2_ADON);
+            SET_BIT(adc->CR2, ADC_CR2_SWSTART);
+            while (!(adc->SR & ADC_SR_EOC)) {}
+            out[row * Pins::COLS + col] = static_cast<uint16_t>(adc->DR);
+            CLEAR_BIT(adc->CR2, ADC_CR2_ADON);
+        }
+    }
 }

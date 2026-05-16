@@ -2,6 +2,10 @@
 #include <cstdint>
 #include "pins.hpp"
 
+extern "C" {
+#include "stm32f4xx_hal.h"
+}
+
 class SensorGridBenchmark;
 
 class SensorGrid {
@@ -9,6 +13,7 @@ class SensorGrid {
 
 public:
     void init();
+    void scan_grid(uint16_t* out);
 
 private:
     void initMuxGpio();

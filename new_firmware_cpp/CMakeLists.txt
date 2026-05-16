@@ -34,6 +34,7 @@ set(SRC_SOURCES
       src/systick.cpp
       src/logger/rtt.cpp
       src/sensor_grid.cpp
+      src/benchmarks/grid_performance.cpp
   )
 
 add_executable(${PROJECT_NAME}.elf ${CORE_SOURCES} ${SRC_SOURCES})

@@ -3,6 +3,7 @@ extern "C" {
 }
 
 #include "sensor_grid.hpp"
+#include "benchmarks/grid_performance.hpp"
 #include "logger/rtt.hpp"
 
 static SensorGrid g_sensorGrid;
@@ -58,6 +59,10 @@ int main() {
     setup();
     RTT::printf("Init done\n");
 
+    SensorGridBenchmark bench(g_sensorGrid);
 
-    while (1) { __NOP(); }
+    while (1) {
+        bench.run();
+        HAL_Delay(2000);
+    }
 }

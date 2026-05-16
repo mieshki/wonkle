@@ -43,11 +43,15 @@ extern "C" {
 #ifndef HID_EPIN_ADDR
 #define HID_EPIN_ADDR                              0x81U
 #endif /* HID_EPIN_ADDR */
+#ifndef HID_EPIN_SIZE
 #define HID_EPIN_SIZE                              0x08U
+#endif /* HID_EPIN_SIZE */
 
 #define USB_HID_CONFIG_DESC_SIZ                    34U
 #define USB_HID_DESC_SIZ                           9U
+#ifndef HID_DIGITIZER_REPORT_DESC_SIZE
 #define HID_DIGITIZER_REPORT_DESC_SIZE             76U
+#endif /* HID_DIGITIZER_REPORT_DESC_SIZE */
 
 #define HID_DESCRIPTOR_TYPE                        0x21U
 #define HID_REPORT_DESC                            0x22U

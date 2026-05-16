@@ -35,6 +35,7 @@ set(SRC_SOURCES
       src/logger/rtt.cpp
       src/sensor_grid.cpp
       src/benchmarks/grid_performance.cpp
+      src/usb/usb.cpp
   )
 
 add_executable(${PROJECT_NAME}.elf ${CORE_SOURCES} ${SRC_SOURCES})
@@ -48,6 +49,7 @@ target_include_directories(${PROJECT_NAME}.elf PRIVATE
       core/stm32f4_hal/Inc
       src
       src/logger
+      src/usb
  )
 
 target_compile_definitions(${PROJECT_NAME}.elf PRIVATE

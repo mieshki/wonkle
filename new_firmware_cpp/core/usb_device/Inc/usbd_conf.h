@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include "stm32f4xx_hal.h"
+#include "usb_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +32,9 @@ extern "C" {
 #define USBD_MAX_NUM_INTERFACES     1U
 #define USBD_MAX_NUM_CONFIGURATION  1U
 #define USBD_MAX_STR_DESC_SIZ       0x100U
+#ifndef USBD_SELF_POWERED
 #define USBD_SELF_POWERED           1U
+#endif
 #define USBD_DEBUG_LEVEL            0U
 #define USBD_SUPPORT_USER_STRING_DESC 0U
 

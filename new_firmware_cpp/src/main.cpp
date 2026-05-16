@@ -5,6 +5,7 @@ extern "C" {
 #include "sensor_grid.hpp"
 #include "benchmarks/grid_performance.hpp"
 #include "logger/rtt.hpp"
+#include "usb/usb.hpp"
 
 static SensorGrid g_sensorGrid;
 
@@ -56,6 +57,7 @@ int main() {
     HAL_Delay(3000);
 
     RTT::printf("Initializing...\n");
+    USB::init();
     setup();
     RTT::printf("Init done\n");
 
@@ -63,6 +65,7 @@ int main() {
 
     while (1) {
         bench.run();
+        USB::send_report(5000, 5000, true, false);
         HAL_Delay(2000);
     }
 }

@@ -1,17 +1,7 @@
 #include "usbd_core.h"
 #include "usbd_desc.h"
 #include "usbd_conf.h"
-
-#define USBD_VID                      0x1209
-#define USBD_PID                      0x02D7
-#define USBD_LANGID_STRING            0x0409
-#define USBD_MANUFACTURER_STRING      "Wonkleboard"
-#define USBD_PRODUCT_HS_STRING        "Wonkleboard Prototype"
-#define USBD_PRODUCT_FS_STRING        "Wonkleboard Prototype"
-#define USBD_CONFIGURATION_HS_STRING  "HID Config"
-#define USBD_CONFIGURATION_FS_STRING  "HID Config"
-#define USBD_INTERFACE_HS_STRING      "HID Interface"
-#define USBD_INTERFACE_FS_STRING      "HID Interface"
+#include "usb_config.h"
 
 uint8_t *USBD_Class_DeviceDescriptor(USBD_SpeedTypeDef speed, uint16_t *length);
 uint8_t *USBD_Class_LangIDStrDescriptor(USBD_SpeedTypeDef speed, uint16_t *length);

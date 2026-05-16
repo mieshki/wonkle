@@ -33,6 +33,7 @@ set(SRC_SOURCES
       src/main.cpp
       src/systick.cpp
       src/logger/rtt.cpp
+      src/sensor_grid.cpp
   )
 
 add_executable(${PROJECT_NAME}.elf ${CORE_SOURCES} ${SRC_SOURCES})

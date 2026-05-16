@@ -59,8 +59,17 @@ add_custom_target(flash
     DEPENDS ${PROJECT_NAME}.elf
 )
 
-# ── Post-build: binary + size ───────────────────────────────────────
+# ── Post-build: binary + size report ─────────────────────────────────
 add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_NAME}.elf> ${PROJECT_NAME}.bin
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${PROJECT_NAME}.elf>
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/../tools/show_sizes.py $<TARGET_FILE:${PROJECT_NAME}.elf>
+)
+
+# ── Standalone size report target ────────────────────────────────────
+add_custom_target(sizes
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/../tools/show_sizes.py $<TARGET_FILE:${PROJECT_NAME}.elf>
+    DEPENDS ${PROJECT_NAME}.elf
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Memory usage report:"
 )

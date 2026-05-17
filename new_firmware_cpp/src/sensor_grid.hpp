@@ -67,9 +67,9 @@ private:
     DMA_HandleTypeDef hdma2_;
     DMA_HandleTypeDef hdma3_;
 
-    uint32_t    muxSettling_     = 500;
-    AdcSampling adcSampling_     = AdcSampling::Cycles144;
-    uint8_t     adcDummyReads_   = 2;
+    uint32_t    muxSettling_     = 4000;
+    AdcSampling adcSampling_     = AdcSampling::Cycles3;
+    uint8_t     adcDummyReads_   = 3;
     bool        oversampleEnabled_ = true;
 
     ADC_HandleTypeDef* getAdc(ADC_TypeDef* instance);

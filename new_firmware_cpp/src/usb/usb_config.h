@@ -21,7 +21,7 @@
 #define HID_EPIN_SIZE               0x08U
 
 /* ── HID polling interval (10 ms FS, 8 ms HS) ──────────────────────── */
-#define HID_FS_BINTERVAL            0x0AU
+#define HID_FS_BINTERVAL            0x01U
 #define HID_HS_BINTERVAL            0x07U
 
 /* ── Report descriptor ─────────────────────────────────────────────── */

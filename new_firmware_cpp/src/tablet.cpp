@@ -65,6 +65,8 @@ void Tablet::init() {
 }
 
 void Tablet::tick(bool measure) {
+    telemetry_.service();
+
     uint32_t t0 = 0, t1 = 0, t2 = 0, t3 = 0;
     if (measure) {
         t0 = DWT->CYCCNT;

@@ -48,6 +48,7 @@ namespace USB {
     /* ── Core ──────────────────────────────────────────────────────── */
     void init();
     bool send_report(uint16_t x, uint16_t y, bool in_range);
+    void drain_commands();
 
     /* ── CDC telemetry ─────────────────────────────────────────────── */
     void send_cdc_grid(const uint16_t *grid, float cx, float cy, bool cvalid);

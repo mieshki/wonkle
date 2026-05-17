@@ -22,6 +22,12 @@ static uint8_t cdc_rx_buffer[CDC_DATA_FS_MAX_PACKET_SIZE];
 static uint16_t g_frame_counter = 0;
 static volatile uint8_t g_cdc_subscriptions = 0;
 
+#define CMDQ_SIZE 16
+struct CmdEntry { uint8_t cmd; uint8_t data[4]; };
+static CmdEntry g_cmdq[CMDQ_SIZE];
+static volatile uint8_t g_cmdq_head = 0;
+static volatile uint8_t g_cmdq_tail = 0;
+
 /* ── CDC command parser state (multi-byte commands) ────────────────── */
 static uint8_t  cdc_cmd_pending = 0;
 static uint8_t  cdc_cmd_buf[4];
@@ -84,7 +90,16 @@ static int8_t cdc_receive(uint8_t *buf, uint32_t *len) {
         }
     }
     if (cdc_cmd_idx > 0) {
-        USB::on_cdc_command(cdc_cmd_pending, cdc_cmd_buf, cdc_cmd_idx - 1);
+        uint8_t tail = g_cmdq_tail;
+        uint8_t next = (tail + 1) % CMDQ_SIZE;
+        if (next != g_cmdq_head) {
+            uint8_t dataLen = cdc_cmd_idx - 1;
+            g_cmdq[tail].cmd = cdc_cmd_pending;
+            for (uint8_t i = 0; i < dataLen && i < 4; i++) {
+                g_cmdq[tail].data[i] = cdc_cmd_buf[i];
+            }
+            g_cmdq_tail = next;
+        }
         cdc_cmd_pending = 0;
         cdc_cmd_idx = 0;
     }
@@ -146,6 +161,14 @@ bool USB::send_report(uint16_t x, uint16_t y, bool in_range) {
         return true;
     }
     return false;
+}
+
+void USB::drain_commands() {
+    while (g_cmdq_head != g_cmdq_tail) {
+        CmdEntry& e = g_cmdq[g_cmdq_head];
+        on_cdc_command(e.cmd, e.data, 4);
+        g_cmdq_head = (g_cmdq_head + 1) % CMDQ_SIZE;
+    }
 }
 
 static bool cdc_tx_ready(void) {
@@ -269,6 +292,7 @@ void USB::on_cdc_command(uint8_t cmd, const uint8_t *data, uint8_t len) {
         }
         break;
     case CMD_GET_CONFIG:
+        RTT::printf("CDC: get_config requested\n");
         send_cdc_config();
         break;
     case CMD_SET_ADC_DUMMY_READS:

@@ -4,6 +4,7 @@
 class Telemetry {
 public:
     void feed_grid(const uint16_t *grid, float cx, float cy, bool cvalid);
+    void service();
 
 private:
     uint8_t divider_ = 0;

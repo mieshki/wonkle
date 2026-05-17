@@ -8,3 +8,7 @@ void Telemetry::feed_grid(const uint16_t *grid, float cx, float cy, bool cvalid)
         USB::send_cdc_grid(grid, cx, cy, cvalid);
     }
 }
+
+void Telemetry::service() {
+    USB::drain_commands();
+}

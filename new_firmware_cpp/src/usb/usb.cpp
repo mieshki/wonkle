@@ -29,9 +29,10 @@ static USBD_CDC_LineCodingTypeDef g_line_coding = {
 };
 
 static int8_t cdc_init(void) {
+    g_cdc_subscriptions = 0;
     USBD_CDC_SetRxBuffer(&g_usbDevice, cdc_rx_buffer);
     uint8_t ret = USBD_CDC_ReceivePacket(&g_usbDevice);
-    RTT::printf("CDC init: RxBuffer=%p ret=%d classId=%d\n",
+    RTT::printf("CDC init: RxBuffer=%p ret=%d classId=%d subs=0\n",
                 (void *)cdc_rx_buffer, ret, g_usbDevice.classId);
     return 0;
 }

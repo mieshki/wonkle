@@ -13,6 +13,8 @@ set(CORE_SOURCES
        core/usb_device/Src/usbd_ctlreq.c
        core/usb_device/Src/usbd_desc.c
        core/usb_device/Src/usbd_hid.c
+       core/usb_device/Src/usbd_cdc.c
+       core/usb_device/Src/usbd_composite_builder.c
        core/usb_device/Src/usbd_ioreq.c
        core/stm32f4_cmsis/Source/Templates/gcc/startup_stm32f429xx.s
      core/stm32f4_cmsis/Source/Templates/system_stm32f4xx.c

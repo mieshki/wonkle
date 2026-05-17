@@ -29,12 +29,16 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-#define USBD_MAX_NUM_INTERFACES     1U
-#define USBD_MAX_NUM_CONFIGURATION  1U
-#define USBD_MAX_STR_DESC_SIZ       0x100U
+#define USE_USBD_COMPOSITE                  1U
+#define USBD_MAX_NUM_INTERFACES             5U
+#define USBD_MAX_NUM_CONFIGURATION          1U
+#define USBD_MAX_STR_DESC_SIZ               0x100U
 #ifndef USBD_SELF_POWERED
 #define USBD_SELF_POWERED           1U
 #endif
+#define USBD_CMPSIT_ACTIVATE_HID            1U
+#define USBD_CMPSIT_ACTIVATE_CDC            1U
+#define USBD_COMPOSITE_USE_IAD              1U
 #define USBD_DEBUG_LEVEL            0U
 #define USBD_SUPPORT_USER_STRING_DESC 0U
 

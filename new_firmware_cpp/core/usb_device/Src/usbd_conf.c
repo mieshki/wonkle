@@ -18,6 +18,7 @@
 
 #include "usbd_core.h"
 #include "usbd_hid.h"
+#include "usbd_cdc.h"
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_pcd.h"
 
@@ -39,7 +40,9 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
 
     HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_FS, 0x80);
     HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x40);
-    HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x80);
+    HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x10);
+    HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 2, 0x40);
+    HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 3, 0x10);
 
     pdev->pData = &hpcd_USB_OTG_FS;
     hpcd_USB_OTG_FS.pData = pdev;
@@ -139,16 +142,28 @@ void USBD_LL_Delay(uint32_t Delay)
     HAL_Delay(Delay);
 }
 
+static uint8_t hid_mem[sizeof(USBD_HID_HandleTypeDef)];
+static uint8_t cdc_mem[sizeof(USBD_CDC_HandleTypeDef)];
+static uint8_t hid_allocated = 0;
+static uint8_t cdc_allocated = 0;
+
 void *USBD_static_malloc(uint32_t size)
 {
-    static uint32_t mem[(sizeof(USBD_HID_HandleTypeDef) / 4) + 1];
-    (void)size;
-    return mem;
+    if (size <= sizeof(USBD_HID_HandleTypeDef) && !hid_allocated) {
+        hid_allocated = 1;
+        return hid_mem;
+    }
+    if (size <= sizeof(USBD_CDC_HandleTypeDef) && !cdc_allocated) {
+        cdc_allocated = 1;
+        return cdc_mem;
+    }
+    return NULL;
 }
 
 void USBD_static_free(void *p)
 {
-    (void)p;
+    if (p == hid_mem) hid_allocated = 0;
+    else if (p == cdc_mem) cdc_allocated = 0;
 }
 
 void OTG_FS_IRQHandler(void)

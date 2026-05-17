@@ -150,15 +150,19 @@ void SensorGrid::scan_grid(uint16_t* out) {
     for (uint8_t row = 0; row < Pins::ROWS; ++row) {
         selectRow(row);
 
+        // Mux settling delay (CD74HC4067 needs time after channel switch)
+        for (volatile uint32_t i = 0; i < 2000; i++) { __NOP(); }
+
         for (uint8_t col = 0; col < Pins::COLS; ++col) {
             const auto& c = Pins::COL[col];
             ADC_TypeDef* adc = c.adc;
-            configureChannel(getAdc(adc), c.ch);
-            SET_BIT(adc->CR2, ADC_CR2_ADON);
+
+            // Direct register write (SQR3 + SWSTART + poll EOC) — no HAL overhead
+            adc->SQR3 = c.ch;
             SET_BIT(adc->CR2, ADC_CR2_SWSTART);
             while (!(adc->SR & ADC_SR_EOC)) {}
+
             out[row * Pins::COLS + col] = static_cast<uint16_t>(adc->DR);
-            CLEAR_BIT(adc->CR2, ADC_CR2_ADON);
         }
     }
 }

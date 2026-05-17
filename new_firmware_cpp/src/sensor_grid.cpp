@@ -137,10 +137,10 @@ void SensorGrid::configureSequence(ADC_HandleTypeDef* hadc, const uint8_t* chann
 
 void SensorGrid::selectRow(uint8_t rowIdx) {
     uint8_t ch = Pins::ROW_TO_MUX_CHANNEL[rowIdx];
-    uint32_t bits = ((ch >> 0) & 1) << Pins::MUX.s0
-                  | ((ch >> 1) & 1) << Pins::MUX.s1
-                  | ((ch >> 2) & 1) << Pins::MUX.s2
-                  | ((ch >> 3) & 1) << Pins::MUX.s3;
+    uint32_t bits = ((ch >> 3) & 1) << Pins::MUX.s0
+                  | ((ch >> 2) & 1) << Pins::MUX.s1
+                  | ((ch >> 1) & 1) << Pins::MUX.s2
+                  | ((ch >> 0) & 1) << Pins::MUX.s3;
     uint32_t mask = (1U << Pins::MUX.s0) | (1U << Pins::MUX.s1)
                   | (1U << Pins::MUX.s2) | (1U << Pins::MUX.s3);
     Pins::MUX.port->ODR = (Pins::MUX.port->ODR & ~mask) | bits;

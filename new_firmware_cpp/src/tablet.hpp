@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "sensor_grid.hpp"
+#include "telemetry.hpp"
 
 class Tablet {
 public:
@@ -20,6 +21,7 @@ private:
     Cursor find_centroid(const uint16_t* grid);
 
     SensorGrid sensor_grid_;
+    Telemetry telemetry_;
     uint16_t grid_[209];
     uint16_t threshold_ = 2200;
 

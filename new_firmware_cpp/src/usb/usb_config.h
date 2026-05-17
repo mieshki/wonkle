@@ -7,14 +7,14 @@
 #define USBD_MANUFACTURER_STRING      "Wonkleboard"
 #define USBD_PRODUCT_HS_STRING        "Wonkleboard Prototype"
 #define USBD_PRODUCT_FS_STRING        "Wonkleboard Prototype"
-#define USBD_CONFIGURATION_HS_STRING  "HID Config"
-#define USBD_CONFIGURATION_FS_STRING  "HID Config"
+#define USBD_CONFIGURATION_HS_STRING  "HID+CDC Config"
+#define USBD_CONFIGURATION_FS_STRING  "HID+CDC Config"
 #define USBD_INTERFACE_HS_STRING      "HID Interface"
 #define USBD_INTERFACE_FS_STRING      "HID Interface"
 
 /* ── Power ─────────────────────────────────────────────────────────── */
-#define USBD_SELF_POWERED           1U
-#define USBD_MAX_POWER              0x32U  /* 100 mA */
+#define USBD_SELF_POWERED           0U
+#define USBD_MAX_POWER              0xFAU  /* 500 mA */
 
 /* ── HID endpoint ──────────────────────────────────────────────────── */
 #define HID_EPIN_ADDR               0x81U
@@ -26,3 +26,15 @@
 
 /* ── Report descriptor ─────────────────────────────────────────────── */
 #define HID_DIGITIZER_REPORT_DESC_SIZE  76U
+
+/* ── CDC endpoints ─────────────────────────────────────────────────── */
+#define CDC_IN_EP                     0x82U
+#define CDC_OUT_EP                    0x01U
+#define CDC_CMD_EP                    0x83U
+
+/* ── CDC packet sizes ──────────────────────────────────────────────── */
+#define CDC_CMD_PACKET_SIZE           8U
+#define CDC_DATA_FS_MAX_PACKET_SIZE   64U
+
+/* ── CDC bInterval for interrupt endpoint ──────────────────────────── */
+#define CDC_FS_BINTERVAL              0x10U

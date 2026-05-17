@@ -86,6 +86,8 @@ void Tablet::tick(bool measure) {
         USB::send_report(0, 0, false);
     }
 
+    telemetry_.feed_grid(grid_, cursor.x, cursor.y, cursor.valid);
+
     if (measure) {
         t3 = DWT->CYCCNT;
         sum_scan_ += t1 - t0;

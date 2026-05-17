@@ -16,6 +16,7 @@ set(CORE_SOURCES
        core/usb_device/Src/usbd_cdc.c
        core/usb_device/Src/usbd_composite_builder.c
        core/usb_device/Src/usbd_ioreq.c
+       core/fast_crc/crc16.c
        core/stm32f4_cmsis/Source/Templates/gcc/startup_stm32f429xx.s
      core/stm32f4_cmsis/Source/Templates/system_stm32f4xx.c
      core/stm32f4_hal/Src/stm32f4xx_hal.c
@@ -37,6 +38,7 @@ set(SRC_SOURCES
       src/logger/rtt.cpp
       src/sensor_grid.cpp
       src/tablet.cpp
+      src/telemetry.cpp
       src/benchmarks/grid_performance.cpp
       src/usb/usb.cpp
   )
@@ -46,6 +48,7 @@ add_executable(${PROJECT_NAME}.elf ${CORE_SOURCES} ${SRC_SOURCES})
 target_include_directories(${PROJECT_NAME}.elf PRIVATE
       core
       core/logger
+      core/fast_crc
       core/usb_device/Inc
       core/cmsis5/CMSIS/Core/Include
       core/stm32f4_cmsis/Include

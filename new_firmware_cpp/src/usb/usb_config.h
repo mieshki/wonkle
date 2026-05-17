@@ -38,3 +38,9 @@
 
 /* ── CDC bInterval for interrupt endpoint ──────────────────────────── */
 #define CDC_FS_BINTERVAL              0x10U
+
+/* ── CDC tuning commands ──────────────────────────────────────────── */
+#define CMD_SET_MUX_SETTLING          0x10U  /* payload: uint32_t LE (cycles) */
+#define CMD_SET_ADC_SAMPLING          0x11U  /* payload: uint8_t (AdcSampling index 0-7) */
+#define CMD_GET_CONFIG                0x12U  /* payload: none */
+#define CMD_SET_ADC_DUMMY_READS       0x13U  /* payload: uint8_t (count 0-10) */

@@ -1,4 +1,5 @@
 #include "sensor_grid.hpp"
+#include "usb/usb.hpp"
 
 extern "C" {
 #include "stm32f4xx_hal.h"
@@ -77,6 +78,8 @@ void SensorGrid::initAdcPeripheral() {
     hadc3_.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
     HAL_ADC_Init(&hadc3_);
     HAL_ADC_Start(&hadc3_);
+
+    applyAdcSampling(adcSampling_);
 }
 
 void SensorGrid::initDma() {
@@ -118,7 +121,7 @@ void SensorGrid::configureChannel(ADC_HandleTypeDef* hadc, uint8_t channel) {
     ADC_ChannelConfTypeDef sConfig = {};
     sConfig.Channel = channel;
     sConfig.Rank = 1;
-    sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
+    sConfig.SamplingTime = adcSamplingToHal(adcSampling_);
     HAL_ADC_ConfigChannel(hadc, &sConfig);
 }
 
@@ -127,7 +130,7 @@ void SensorGrid::configureSequence(ADC_HandleTypeDef* hadc, const uint8_t* chann
         ADC_ChannelConfTypeDef sConfig = {};
         sConfig.Channel = channels[i];
         sConfig.Rank = i + 1;
-        sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
+        sConfig.SamplingTime = adcSamplingToHal(adcSampling_);
         HAL_ADC_ConfigChannel(hadc, &sConfig);
     }
     hadc->Init.NbrOfConversion = count;
@@ -150,14 +153,26 @@ void SensorGrid::scan_grid(uint16_t* out) {
     for (uint8_t row = 0; row < Pins::ROWS; ++row) {
         selectRow(row);
 
-        // Mux settling delay (CD74HC4067 needs time after channel switch)
-        for (volatile uint32_t i = 0; i < 2000; i++) { __NOP(); }
+        for (volatile uint32_t i = 0; i < muxSettling_; i++) { __NOP(); }
+
+        if (adcDummyReads_ > 0) {
+            for (uint8_t d = 0; d < adcDummyReads_; d++) {
+                ADC2->SQR3 = Pins::COL[0].ch;
+                SET_BIT(ADC2->CR2, ADC_CR2_SWSTART);
+                while (!(ADC2->SR & ADC_SR_EOC)) {}
+                (void)ADC2->DR;
+
+                ADC3->SQR3 = Pins::COL[7].ch;
+                SET_BIT(ADC3->CR2, ADC_CR2_SWSTART);
+                while (!(ADC3->SR & ADC_SR_EOC)) {}
+                (void)ADC3->DR;
+            }
+        }
 
         for (uint8_t col = 0; col < Pins::COLS; ++col) {
             const auto& c = Pins::COL[col];
             ADC_TypeDef* adc = c.adc;
 
-            // Direct register write (SQR3 + SWSTART + poll EOC) — no HAL overhead
             adc->SQR3 = c.ch;
             SET_BIT(adc->CR2, ADC_CR2_SWSTART);
             while (!(adc->SR & ADC_SR_EOC)) {}
@@ -165,4 +180,32 @@ void SensorGrid::scan_grid(uint16_t* out) {
             out[row * Pins::COLS + col] = static_cast<uint16_t>(adc->DR);
         }
     }
+}
+
+void SensorGrid::setMuxSettling(uint32_t cycles) {
+    muxSettling_ = cycles;
+}
+
+void SensorGrid::setAdcSampling(AdcSampling s) {
+    if (static_cast<uint8_t>(s) >= ADC_SAMPLING_COUNT) return;
+    adcSampling_ = s;
+    applyAdcSampling(s);
+}
+
+void SensorGrid::applyAdcSampling(AdcSampling s) {
+    uint32_t samplingTime = adcSamplingToHal(s);
+    for (uint8_t col = 0; col < Pins::COLS; ++col) {
+        const auto& c = Pins::COL[col];
+        ADC_ChannelConfTypeDef sConfig = {};
+        sConfig.Channel = c.ch;
+        sConfig.Rank = 1;
+        sConfig.SamplingTime = samplingTime;
+        ADC_HandleTypeDef* hadc = getAdc(c.adc);
+        HAL_ADC_ConfigChannel(hadc, &sConfig);
+    }
+}
+
+void SensorGrid::setAdcDummyReads(uint8_t count) {
+    if (count > 10) return;
+    adcDummyReads_ = count;
 }

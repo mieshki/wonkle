@@ -10,6 +10,12 @@ extern "C" {
 #include "usb.hpp"
 #include "usb_config.h"
 #include "logger/rtt.hpp"
+#include "sensor_grid.hpp"
+
+static void* g_sensor_grid_ptr = nullptr;
+
+void USB::set_sensor_grid(void* grid) { g_sensor_grid_ptr = grid; }
+void* USB::get_sensor_grid() { return g_sensor_grid_ptr; }
 
 static USBD_HandleTypeDef g_usbDevice;
 static uint8_t cdc_rx_buffer[CDC_DATA_FS_MAX_PACKET_SIZE];
@@ -155,6 +161,37 @@ static void cdc_send_frame(const uint8_t *data, uint16_t len) {
     USBD_CDC_TransmitPacket(&g_usbDevice, USB::CDC_CLASS_ID);
 }
 
+struct __attribute__((packed)) CdcConfigResponse {
+    uint8_t  sync_lo;
+    uint8_t  sync_hi;
+    uint8_t  version;
+    uint8_t  msg_type;
+    uint16_t seq;
+    uint32_t mux_settling;
+    uint8_t  adc_sampling;
+    uint8_t  adc_dummy_reads;
+    uint16_t crc;
+};
+
+void USB::send_cdc_config() {
+    CdcConfigResponse resp;
+    resp.sync_lo = 0xAA;
+    resp.sync_hi = 0x55;
+    resp.version = PROTOCOL_VERSION;
+    resp.msg_type = 0x20;
+    resp.seq = 0;
+    auto* grid = static_cast<SensorGrid*>(g_sensor_grid_ptr);
+    resp.mux_settling = grid->getMuxSettling();
+    resp.adc_sampling = static_cast<uint8_t>(grid->getAdcSampling());
+    resp.adc_dummy_reads = grid->getAdcDummyReads();
+
+    uint8_t *payload = reinterpret_cast<uint8_t*>(&resp);
+    uint16_t payload_len = static_cast<uint16_t>(offsetof(CdcConfigResponse, crc));
+    resp.crc = crc16_ccitt(payload, payload_len);
+
+    cdc_send_frame(reinterpret_cast<const uint8_t*>(&resp), sizeof(resp));
+}
+
 void USB::send_cdc_grid(const uint16_t *grid, float cx, float cy, bool cvalid) {
     static CdcGridFrame frame;
 
@@ -213,6 +250,29 @@ void USB::on_cdc_command(uint8_t cmd, const uint8_t *data, uint8_t len) {
             RTT::printf("CDC: unsubscribe 0x%02x (now=0x%02x)\n",
                         static_cast<unsigned>(data[0]),
                         static_cast<unsigned>(g_cdc_subscriptions));
+        }
+        break;
+    case CMD_SET_MUX_SETTLING:
+        if (len >= 4) {
+            uint32_t cycles = (uint32_t)data[0] | ((uint32_t)data[1] << 8)
+                            | ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
+            static_cast<SensorGrid*>(g_sensor_grid_ptr)->setMuxSettling(cycles);
+            RTT::printf("CDC: mux_settling=%u\n", static_cast<unsigned>(cycles));
+        }
+        break;
+    case CMD_SET_ADC_SAMPLING:
+        if (len >= 1) {
+            static_cast<SensorGrid*>(g_sensor_grid_ptr)->setAdcSampling(static_cast<AdcSampling>(data[0]));
+            RTT::printf("CDC: adc_sampling=%s\n", adcSamplingLabel(static_cast<AdcSampling>(data[0])));
+        }
+        break;
+    case CMD_GET_CONFIG:
+        send_cdc_config();
+        break;
+    case CMD_SET_ADC_DUMMY_READS:
+        if (len >= 1) {
+            static_cast<SensorGrid*>(g_sensor_grid_ptr)->setAdcDummyReads(data[0]);
+            RTT::printf("CDC: adc_dummy_reads=%u\n", static_cast<unsigned>(data[0]));
         }
         break;
     default:

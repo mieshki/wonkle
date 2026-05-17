@@ -4,6 +4,9 @@
 
 namespace USB {
 
+    void set_sensor_grid(void* grid);
+    void* get_sensor_grid();
+
     constexpr uint8_t PROTOCOL_VERSION = 0x01;
 
     /* ── Subscription flags ────────────────────────────────────────── */
@@ -48,6 +51,7 @@ namespace USB {
 
     /* ── CDC telemetry ─────────────────────────────────────────────── */
     void send_cdc_grid(const uint16_t *grid, float cx, float cy, bool cvalid);
+    void send_cdc_config();
     bool is_subscribed(uint8_t flag);
     void on_cdc_command(uint8_t cmd, const uint8_t *data, uint8_t len);
 }

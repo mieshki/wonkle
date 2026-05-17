@@ -12,6 +12,7 @@ int main() {
     RTT::init();
     RTT::printf("Hello from Wonkle!\n");
 
+    g_tablet = Tablet();
     g_tablet.init();
 
     SensorGridBenchmark bench(g_tablet.get_sensor_grid());

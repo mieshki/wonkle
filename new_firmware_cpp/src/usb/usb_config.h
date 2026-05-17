@@ -44,3 +44,4 @@
 #define CMD_SET_ADC_SAMPLING          0x11U  /* payload: uint8_t (AdcSampling index 0-7) */
 #define CMD_GET_CONFIG                0x12U  /* payload: none */
 #define CMD_SET_ADC_DUMMY_READS       0x13U  /* payload: uint8_t (count 0-10) */
+#define CMD_SET_ADC_OVERSAMPLE        0x14U  /* payload: uint8_t (0=off, 1=on) */

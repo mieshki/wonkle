@@ -52,6 +52,9 @@ public:
     uint8_t getAdcDummyReads() const { return adcDummyReads_; }
     void setAdcDummyReads(uint8_t count);
 
+    bool getOversampleEnabled() const { return oversampleEnabled_; }
+    void setOversampleEnabled(bool enabled);
+
 private:
     void initMuxGpio();
     void initAdcGpio();
@@ -64,9 +67,10 @@ private:
     DMA_HandleTypeDef hdma2_;
     DMA_HandleTypeDef hdma3_;
 
-    uint32_t    muxSettling_     = 2000;
-    AdcSampling adcSampling_     = AdcSampling::Cycles480;
-    uint8_t     adcDummyReads_   = 0;
+    uint32_t    muxSettling_     = 500;
+    AdcSampling adcSampling_     = AdcSampling::Cycles144;
+    uint8_t     adcDummyReads_   = 2;
+    bool        oversampleEnabled_ = true;
 
     ADC_HandleTypeDef* getAdc(ADC_TypeDef* instance);
     void configureChannel(ADC_HandleTypeDef* hadc, uint8_t channel);

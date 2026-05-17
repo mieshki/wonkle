@@ -170,6 +170,7 @@ struct __attribute__((packed)) CdcConfigResponse {
     uint32_t mux_settling;
     uint8_t  adc_sampling;
     uint8_t  adc_dummy_reads;
+    uint8_t  adc_oversample;
     uint16_t crc;
 };
 
@@ -184,6 +185,7 @@ void USB::send_cdc_config() {
     resp.mux_settling = grid->getMuxSettling();
     resp.adc_sampling = static_cast<uint8_t>(grid->getAdcSampling());
     resp.adc_dummy_reads = grid->getAdcDummyReads();
+    resp.adc_oversample = grid->getOversampleEnabled() ? 1 : 0;
 
     uint8_t *payload = reinterpret_cast<uint8_t*>(&resp);
     uint16_t payload_len = static_cast<uint16_t>(offsetof(CdcConfigResponse, crc));
@@ -273,6 +275,12 @@ void USB::on_cdc_command(uint8_t cmd, const uint8_t *data, uint8_t len) {
         if (len >= 1) {
             static_cast<SensorGrid*>(g_sensor_grid_ptr)->setAdcDummyReads(data[0]);
             RTT::printf("CDC: adc_dummy_reads=%u\n", static_cast<unsigned>(data[0]));
+        }
+        break;
+    case CMD_SET_ADC_OVERSAMPLE:
+        if (len >= 1) {
+            static_cast<SensorGrid*>(g_sensor_grid_ptr)->setOversampleEnabled(data[0] != 0);
+            RTT::printf("CDC: adc_oversample=%s\n", data[0] ? "on" : "off");
         }
         break;
     default:

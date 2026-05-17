@@ -155,7 +155,7 @@ void SensorGrid::scan_grid(uint16_t* out) {
 
         for (volatile uint32_t i = 0; i < muxSettling_; i++) { __NOP(); }
 
-        if (adcDummyReads_ > 0) {
+        if (!oversampleEnabled_ && adcDummyReads_ > 0) {
             for (uint8_t d = 0; d < adcDummyReads_; d++) {
                 ADC2->SQR3 = Pins::COL[0].ch;
                 SET_BIT(ADC2->CR2, ADC_CR2_SWSTART);
@@ -173,11 +173,22 @@ void SensorGrid::scan_grid(uint16_t* out) {
             const auto& c = Pins::COL[col];
             ADC_TypeDef* adc = c.adc;
 
-            adc->SQR3 = c.ch;
-            SET_BIT(adc->CR2, ADC_CR2_SWSTART);
-            while (!(adc->SR & ADC_SR_EOC)) {}
-
-            out[row * Pins::COLS + col] = static_cast<uint16_t>(adc->DR);
+            if (oversampleEnabled_) {
+                uint8_t totalReads = adcDummyReads_ + 1;
+                uint32_t accum = 0;
+                for (uint8_t s = 0; s < totalReads; ++s) {
+                    adc->SQR3 = c.ch;
+                    SET_BIT(adc->CR2, ADC_CR2_SWSTART);
+                    while (!(adc->SR & ADC_SR_EOC)) {}
+                    accum += static_cast<uint32_t>(adc->DR);
+                }
+                out[row * Pins::COLS + col] = static_cast<uint16_t>(accum / totalReads);
+            } else {
+                adc->SQR3 = c.ch;
+                SET_BIT(adc->CR2, ADC_CR2_SWSTART);
+                while (!(adc->SR & ADC_SR_EOC)) {}
+                out[row * Pins::COLS + col] = static_cast<uint16_t>(adc->DR);
+            }
         }
     }
 }
@@ -208,4 +219,8 @@ void SensorGrid::applyAdcSampling(AdcSampling s) {
 void SensorGrid::setAdcDummyReads(uint8_t count) {
     if (count > 10) return;
     adcDummyReads_ = count;
+}
+
+void SensorGrid::setOversampleEnabled(bool enabled) {
+    oversampleEnabled_ = enabled;
 }

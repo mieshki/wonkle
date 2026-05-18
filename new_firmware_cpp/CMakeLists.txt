@@ -35,6 +35,7 @@ set(CORE_SOURCES
 set(SRC_SOURCES
       src/main.cpp
       src/systick.cpp
+      src/system_init.cpp
       src/logger/rtt.cpp
       src/sensor_grid.cpp
       src/tablet.cpp

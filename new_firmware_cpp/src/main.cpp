@@ -5,7 +5,6 @@ extern "C" {
 #include "tablet.hpp"
 #include "benchmarks/grid_performance.hpp"
 #include "logger/rtt.hpp"
-#include "usb/usb.hpp"
 
 static Tablet g_tablet;
 

@@ -3,6 +3,8 @@
 
 class PerformanceProfiler {
 public:
+    static constexpr uint32_t REPORT_INTERVAL_MS = 2000;
+
     void init();
     void begin(bool enabled);
     void mark_scan();

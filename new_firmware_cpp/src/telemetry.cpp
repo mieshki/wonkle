@@ -26,8 +26,8 @@ void Telemetry::feed_grid(const uint16_t *grid, float cx, float cy, bool cvalid)
     if (!is_subscribed(SUB_GRID)) return;
 
     static CdcGridFrame frame;
-    frame.header.sync_lo  = 0xAA;
-    frame.header.sync_hi  = 0x55;
+    frame.header.sync_lo  = SYNC_LO;
+    frame.header.sync_hi  = SYNC_HI;
     frame.header.version  = PROTOCOL_VERSION;
     frame.header.msg_type = MSG_GRID;
     frame.header.seq      = frame_counter_;
@@ -54,8 +54,8 @@ void Telemetry::feed_grid(const uint16_t *grid, float cx, float cy, bool cvalid)
 
 void Telemetry::send_config() {
     static CdcConfigResponse resp;
-    resp.sync_lo  = 0xAA;
-    resp.sync_hi  = 0x55;
+    resp.sync_lo  = SYNC_LO;
+    resp.sync_hi  = SYNC_HI;
     resp.version  = PROTOCOL_VERSION;
     resp.msg_type = 0x20;
     resp.seq      = 0;

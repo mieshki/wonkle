@@ -1,51 +1,14 @@
 #include "tablet.hpp"
+#include "system_init.hpp"
 #include "pins.hpp"
 #include "usb/usb.hpp"
 #include "logger/rtt.hpp"
 
-extern "C" {
-#include "stm32f4xx_hal.h"
-}
-
-static void Error_Handler(void) {
-    while (1) { __NOP(); }
-}
-
-static void SystemClock_Config(void) {
-    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-
-    __HAL_RCC_PWR_CLK_ENABLE();
-    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-    RCC_OscInitStruct.PLL.PLLM = 16;
-    RCC_OscInitStruct.PLL.PLLN = 336;
-    RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
-    RCC_OscInitStruct.PLL.PLLQ = 7;
-    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) { Error_Handler(); }
-
-    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
-                                | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
-    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) { Error_Handler(); }
-}
-
 void Tablet::init() {
-    HAL_Init();
-    SystemClock_Config();
-    SystemCoreClockUpdate();
-    RTT::printf("HCLK: %u Hz\n", static_cast<unsigned>(SystemCoreClock));
+    PlatformInit();
 
     RTT::printf("Waiting for 3 seconds...\n");
-    HAL_Delay(3000);
+    HAL_Delay(USB_ENUM_DELAY_MS);
 
     RTT::printf("Initializing...\n");
     USB::init();
@@ -64,10 +27,10 @@ void Tablet::tick(bool measure) {
 
     telemetry_.service();
 
-    sensor_grid_.scan_grid(grid_);
+    sensor_grid_.scan_grid(grid_.data());
     profiler_.mark_scan();
 
-    auto cursor = find_centroid(grid_);
+    auto cursor = find_centroid(grid_.data());
     profiler_.mark_centroid();
 
     update_cursor(cursor);
@@ -75,21 +38,19 @@ void Tablet::tick(bool measure) {
     profiler_.mark_usb();
     profiler_.report_if_due();
 
-    telemetry_.feed_grid(grid_, cursor.x, cursor.y, cursor.valid);
+    telemetry_.feed_grid(grid_.data(), cursor.x, cursor.y, cursor.valid);
 }
 
 void Tablet::update_cursor(const Cursor& cursor) {
-    uint8_t report[8] = {0};
+    HidReport report = {0};
     if (cursor.valid) {
-        uint16_t x_usb = static_cast<uint16_t>(cursor.x * 10000.0f / 18.0f);
-        uint16_t y_usb = static_cast<uint16_t>(cursor.y * 10000.0f / 10.0f);
-        report[1] = 0x02;
-        report[2] = static_cast<uint8_t>(x_usb & 0xFF);
-        report[3] = static_cast<uint8_t>((x_usb >> 8) & 0xFF);
-        report[4] = static_cast<uint8_t>(y_usb & 0xFF);
-        report[5] = static_cast<uint8_t>((y_usb >> 8) & 0xFF);
+        uint16_t x_usb = static_cast<uint16_t>(cursor.x * GRID_TO_HID_SCALE / GRID_COLS_MAX);
+        uint16_t y_usb = static_cast<uint16_t>(cursor.y * GRID_TO_HID_SCALE / GRID_ROWS_MAX);
+        report.flags = HID_IN_RANGE;
+        report.x = static_cast<int16_t>(x_usb);
+        report.y = static_cast<int16_t>(y_usb);
     }
-    USB::send_hid_report(report, sizeof(report));
+    USB::send_hid_report(reinterpret_cast<const uint8_t*>(&report), sizeof(report));
 }
 
 Tablet::Cursor Tablet::find_centroid(const uint16_t* grid) {

@@ -42,7 +42,7 @@ void PerformanceProfiler::mark_usb() {
 void PerformanceProfiler::report_if_due() {
     if (!enabled_) return;
     uint32_t elapsed = HAL_GetTick() - tick_start_;
-    if (elapsed >= 2000) {
+    if (elapsed >= REPORT_INTERVAL_MS) {
         uint32_t hz = (iterations_ * 1000) / elapsed;
         uint64_t cycles_per_iter = sum_cycles_ / iterations_;
         uint32_t us_total = static_cast<uint32_t>((static_cast<uint64_t>(cycles_per_iter) * 1000000ULL) / SystemCoreClock);

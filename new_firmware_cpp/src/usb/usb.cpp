@@ -4,34 +4,22 @@ extern "C" {
 #include "usbd_hid.h"
 #include "usbd_cdc.h"
 #include "usbd_desc.h"
-#include "crc16.h"
 }
 
 #include "usb.hpp"
 #include "usb_config.h"
 #include "logger/rtt.hpp"
-#include "sensor_grid.hpp"
-
-static void* g_sensor_grid_ptr = nullptr;
-
-void USB::set_sensor_grid(void* grid) { g_sensor_grid_ptr = grid; }
-void* USB::get_sensor_grid() { return g_sensor_grid_ptr; }
 
 static USBD_HandleTypeDef g_usbDevice;
 static uint8_t cdc_rx_buffer[CDC_DATA_FS_MAX_PACKET_SIZE];
-static uint16_t g_frame_counter = 0;
-static volatile uint8_t g_cdc_subscriptions = 0;
 
-#define CMDQ_SIZE 16
-struct CmdEntry { uint8_t cmd; uint8_t data[4]; };
-static CmdEntry g_cmdq[CMDQ_SIZE];
-static volatile uint8_t g_cmdq_head = 0;
-static volatile uint8_t g_cmdq_tail = 0;
+#define RX_PACKET_MAX  64
+#define RX_PACKET_RING 8
 
-/* ── CDC command parser state (multi-byte commands) ────────────────── */
-static uint8_t  cdc_cmd_pending = 0;
-static uint8_t  cdc_cmd_buf[4];
-static uint8_t  cdc_cmd_idx = 0;
+static struct { uint8_t data[RX_PACKET_MAX]; uint16_t len; } g_rx_packets[RX_PACKET_RING];
+static volatile uint8_t g_rx_pkt_head = 0;
+static uint8_t g_rx_pkt_tail = 0;
+static volatile bool g_rx_overflow_occurred = false;
 
 static USBD_CDC_LineCodingTypeDef g_line_coding = {
     115200,
@@ -41,17 +29,16 @@ static USBD_CDC_LineCodingTypeDef g_line_coding = {
 };
 
 static int8_t cdc_init(void) {
-    g_cdc_subscriptions = 0;
     USBD_CDC_SetRxBuffer(&g_usbDevice, cdc_rx_buffer);
     uint8_t ret = USBD_CDC_ReceivePacket(&g_usbDevice);
-    RTT::printf("CDC init: RxBuffer=%p ret=%d classId=%d subs=0\n",
-                (void *)cdc_rx_buffer, ret, g_usbDevice.classId);
+    RTT::printf("CDC init: RxBuffer=%p ret=%d\n", (void*)cdc_rx_buffer, ret);
     return 0;
 }
+
 static int8_t cdc_deinit(void) {
-    g_cdc_subscriptions = 0;
     return 0;
 }
+
 static int8_t cdc_control(uint8_t cmd, uint8_t *pbuf, uint16_t length) {
     (void)length;
     switch (cmd) {
@@ -78,35 +65,24 @@ static int8_t cdc_control(uint8_t cmd, uint8_t *pbuf, uint16_t length) {
     }
     return 0;
 }
+
 static int8_t cdc_receive(uint8_t *buf, uint32_t *len) {
-    RTT::printf("CDC rx: len=%u\n", static_cast<unsigned>(*len));
-    for (uint32_t i = 0; i < *len; i++) {
-        if (cdc_cmd_idx == 0) {
-            cdc_cmd_pending = buf[i];
-            cdc_cmd_idx = 1;
-        } else if (cdc_cmd_idx < sizeof(cdc_cmd_buf) + 1) {
-            cdc_cmd_buf[cdc_cmd_idx - 1] = buf[i];
-            cdc_cmd_idx++;
+    uint8_t next = (g_rx_pkt_head + 1) % RX_PACKET_RING;
+    if (next == g_rx_pkt_tail) {
+        g_rx_overflow_occurred = true;
+    } else {
+        uint16_t n = *len > RX_PACKET_MAX ? RX_PACKET_MAX : static_cast<uint16_t>(*len);
+        for (uint16_t i = 0; i < n; i++) {
+            g_rx_packets[g_rx_pkt_head].data[i] = buf[i];
         }
-    }
-    if (cdc_cmd_idx > 0) {
-        uint8_t tail = g_cmdq_tail;
-        uint8_t next = (tail + 1) % CMDQ_SIZE;
-        if (next != g_cmdq_head) {
-            uint8_t dataLen = cdc_cmd_idx - 1;
-            g_cmdq[tail].cmd = cdc_cmd_pending;
-            for (uint8_t i = 0; i < dataLen && i < 4; i++) {
-                g_cmdq[tail].data[i] = cdc_cmd_buf[i];
-            }
-            g_cmdq_tail = next;
-        }
-        cdc_cmd_pending = 0;
-        cdc_cmd_idx = 0;
+        g_rx_packets[g_rx_pkt_head].len = n;
+        g_rx_pkt_head = next;
     }
     USBD_CDC_SetRxBuffer(&g_usbDevice, cdc_rx_buffer);
     USBD_CDC_ReceivePacket(&g_usbDevice);
     return 0;
 }
+
 static int8_t cdc_transmit_cplt(uint8_t *buf, uint32_t *len, uint8_t epnum) {
     (void)buf; (void)len; (void)epnum;
     return 0;
@@ -119,6 +95,13 @@ static USBD_CDC_ItfTypeDef cdc_interface_fops = {
     cdc_receive,
     cdc_transmit_cplt
 };
+
+static void check_rx_overflow() {
+    if (g_rx_overflow_occurred) {
+        g_rx_overflow_occurred = false;
+        RTT::printf("WARNING: CDC RX ring buffer overflow — packet(s) dropped\n");
+    }
+}
 
 void USB::init() {
     __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -148,27 +131,10 @@ void USB::init() {
     RTT::printf("USB composite started (HID+CDC)\n");
 }
 
-bool USB::send_report(uint16_t x, uint16_t y, bool in_range) {
-    uint8_t report[8] = {0};
-    report[1] = in_range ? 0x02 : 0x00;
-    report[2] = static_cast<uint8_t>(x & 0xFF);
-    report[3] = static_cast<uint8_t>((x >> 8) & 0xFF);
-    report[4] = static_cast<uint8_t>(y & 0xFF);
-    report[5] = static_cast<uint8_t>((y >> 8) & 0xFF);
-
-    if (g_usbDevice.dev_state == USBD_STATE_CONFIGURED) {
-        USBD_HID_SendReport(&g_usbDevice, report, sizeof(report), 0);
-        return true;
-    }
-    return false;
-}
-
-void USB::drain_commands() {
-    while (g_cmdq_head != g_cmdq_tail) {
-        CmdEntry& e = g_cmdq[g_cmdq_head];
-        on_cdc_command(e.cmd, e.data, 4);
-        g_cmdq_head = (g_cmdq_head + 1) % CMDQ_SIZE;
-    }
+bool USB::send_hid_report(const uint8_t* data, uint16_t len) {
+    if (g_usbDevice.dev_state != USBD_STATE_CONFIGURED) return false;
+    USBD_HID_SendReport(&g_usbDevice, const_cast<uint8_t*>(data), len, 0);
+    return true;
 }
 
 static bool cdc_tx_ready(void) {
@@ -178,136 +144,21 @@ static bool cdc_tx_ready(void) {
     return hcdc != nullptr && hcdc->TxState == 0U;
 }
 
-static void cdc_send_frame(const uint8_t *data, uint16_t len) {
-    if (!cdc_tx_ready()) return;
+bool USB::cdc_send_frame(const uint8_t *data, uint16_t len) {
+    if (!cdc_tx_ready()) return false;
     USBD_CDC_SetTxBuffer(&g_usbDevice, const_cast<uint8_t*>(data), len, USB::CDC_CLASS_ID);
     USBD_CDC_TransmitPacket(&g_usbDevice, USB::CDC_CLASS_ID);
+    return true;
 }
 
-struct __attribute__((packed)) CdcConfigResponse {
-    uint8_t  sync_lo;
-    uint8_t  sync_hi;
-    uint8_t  version;
-    uint8_t  msg_type;
-    uint16_t seq;
-    uint32_t mux_settling;
-    uint8_t  adc_sampling;
-    uint8_t  adc_dummy_reads;
-    uint8_t  adc_oversample;
-    uint16_t crc;
-};
-
-void USB::send_cdc_config() {
-    CdcConfigResponse resp;
-    resp.sync_lo = 0xAA;
-    resp.sync_hi = 0x55;
-    resp.version = PROTOCOL_VERSION;
-    resp.msg_type = 0x20;
-    resp.seq = 0;
-    auto* grid = static_cast<SensorGrid*>(g_sensor_grid_ptr);
-    resp.mux_settling = grid->getMuxSettling();
-    resp.adc_sampling = static_cast<uint8_t>(grid->getAdcSampling());
-    resp.adc_dummy_reads = grid->getAdcDummyReads();
-    resp.adc_oversample = grid->getOversampleEnabled() ? 1 : 0;
-
-    uint8_t *payload = reinterpret_cast<uint8_t*>(&resp);
-    uint16_t payload_len = static_cast<uint16_t>(offsetof(CdcConfigResponse, crc));
-    resp.crc = crc16_ccitt(payload, payload_len);
-
-    cdc_send_frame(reinterpret_cast<const uint8_t*>(&resp), sizeof(resp));
-}
-
-void USB::send_cdc_grid(const uint16_t *grid, float cx, float cy, bool cvalid) {
-    static CdcGridFrame frame;
-
-    frame.header.sync_lo  = 0xAA;
-    frame.header.sync_hi  = 0x55;
-    frame.header.version  = PROTOCOL_VERSION;
-    frame.header.msg_type = MSG_GRID;
-    frame.header.seq      = g_frame_counter;
-
-    for (int i = 0; i < 209; i++) {
-        frame.payload.values[i] = grid[i];
+uint16_t USB::cdc_rx_pop(uint8_t* buf, uint16_t maxlen) {
+    check_rx_overflow();
+    if (g_rx_pkt_tail == g_rx_pkt_head) return 0;
+    uint16_t n = g_rx_packets[g_rx_pkt_tail].len;
+    if (n > maxlen) n = maxlen;
+    for (uint16_t i = 0; i < n; i++) {
+        buf[i] = g_rx_packets[g_rx_pkt_tail].data[i];
     }
-    frame.payload.cursor_x     = static_cast<int16_t>(cx * 100.0f);
-    frame.payload.cursor_y     = static_cast<int16_t>(cy * 100.0f);
-    frame.payload.cursor_valid = cvalid ? 1 : 0;
-
-    uint8_t *payload = reinterpret_cast<uint8_t*>(&frame);
-    uint16_t payload_len = static_cast<uint16_t>(offsetof(CdcGridFrame, crc));
-    frame.crc = crc16_ccitt(payload, payload_len);
-
-    if (g_frame_counter < 3) {
-        bool ready = cdc_tx_ready();
-        RTT::printf("GRID#%u ready=%d subs=0x%02x\n",
-                    static_cast<unsigned>(g_frame_counter),
-                    ready ? 1 : 0,
-                    static_cast<unsigned>(g_cdc_subscriptions));
-        if (!ready) return;
-    }
-    cdc_send_frame(reinterpret_cast<const uint8_t*>(&frame), sizeof(frame));
-    g_frame_counter++;
-}
-
-bool USB::is_subscribed(uint8_t flag) {
-    return (g_cdc_subscriptions & flag) != 0;
-}
-
-void USB::on_cdc_command(uint8_t cmd, const uint8_t *data, uint8_t len) {
-    switch (cmd) {
-    case CMD_SUBSCRIBE:
-        if (len >= 1) {
-            g_cdc_subscriptions |= data[0];
-        } else {
-            g_cdc_subscriptions |= SUB_GRID;
-        }
-        RTT::printf("CDC: subscribe 0x%02x (now=0x%02x)\n",
-                    static_cast<unsigned>(len >= 1 ? data[0] : SUB_GRID),
-                    static_cast<unsigned>(g_cdc_subscriptions));
-        break;
-    case CMD_UNSUBSCRIBE:
-        g_cdc_subscriptions = 0;
-        RTT::printf("CDC: unsubscribe all\n");
-        break;
-    case CMD_UNSUBSCRIBE_TO:
-        if (len >= 1) {
-            g_cdc_subscriptions &= ~data[0];
-            RTT::printf("CDC: unsubscribe 0x%02x (now=0x%02x)\n",
-                        static_cast<unsigned>(data[0]),
-                        static_cast<unsigned>(g_cdc_subscriptions));
-        }
-        break;
-    case CMD_SET_MUX_SETTLING:
-        if (len >= 4) {
-            uint32_t cycles = (uint32_t)data[0] | ((uint32_t)data[1] << 8)
-                            | ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
-            static_cast<SensorGrid*>(g_sensor_grid_ptr)->setMuxSettling(cycles);
-            RTT::printf("CDC: mux_settling=%u\n", static_cast<unsigned>(cycles));
-        }
-        break;
-    case CMD_SET_ADC_SAMPLING:
-        if (len >= 1) {
-            static_cast<SensorGrid*>(g_sensor_grid_ptr)->setAdcSampling(static_cast<AdcSampling>(data[0]));
-            RTT::printf("CDC: adc_sampling=%s\n", adcSamplingLabel(static_cast<AdcSampling>(data[0])));
-        }
-        break;
-    case CMD_GET_CONFIG:
-        RTT::printf("CDC: get_config requested\n");
-        send_cdc_config();
-        break;
-    case CMD_SET_ADC_DUMMY_READS:
-        if (len >= 1) {
-            static_cast<SensorGrid*>(g_sensor_grid_ptr)->setAdcDummyReads(data[0]);
-            RTT::printf("CDC: adc_dummy_reads=%u\n", static_cast<unsigned>(data[0]));
-        }
-        break;
-    case CMD_SET_ADC_OVERSAMPLE:
-        if (len >= 1) {
-            static_cast<SensorGrid*>(g_sensor_grid_ptr)->setOversampleEnabled(data[0] != 0);
-            RTT::printf("CDC: adc_oversample=%s\n", data[0] ? "on" : "off");
-        }
-        break;
-    default:
-        break;
-    }
+    g_rx_pkt_tail = (g_rx_pkt_tail + 1) % RX_PACKET_RING;
+    return n;
 }

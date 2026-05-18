@@ -1,5 +1,4 @@
 #include "sensor_grid.hpp"
-#include "usb/usb.hpp"
 
 extern "C" {
 #include "stm32f4xx_hal.h"

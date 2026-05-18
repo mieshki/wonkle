@@ -51,6 +51,7 @@ void Tablet::init() {
     RTT::printf("Initializing...\n");
     USB::init();
     sensor_grid_.init();
+    telemetry_.init(sensor_grid_);
     RTT::printf("Init done\n");
     RTT::printf("Config: mux_settling=%u, adc_sampling=%s, adc_dummy_reads=%u\n",
                 static_cast<unsigned>(sensor_grid_.getMuxSettling()),
@@ -84,13 +85,7 @@ void Tablet::tick(bool measure) {
         t2 = DWT->CYCCNT;
     }
 
-    if (cursor.valid) {
-        uint16_t x_usb = static_cast<uint16_t>(cursor.x * 10000.0f / 18.0f);
-        uint16_t y_usb = static_cast<uint16_t>(cursor.y * 10000.0f / 10.0f);
-        USB::send_report(x_usb, y_usb, true);
-    } else {
-        USB::send_report(0, 0, false);
-    }
+    update_cursor(cursor);
 
     telemetry_.feed_grid(grid_, cursor.x, cursor.y, cursor.valid);
 
@@ -124,6 +119,20 @@ void Tablet::tick(bool measure) {
             sum_cycles_ = 0;
         }
     }
+}
+
+void Tablet::update_cursor(const Cursor& cursor) {
+    uint8_t report[8] = {0};
+    if (cursor.valid) {
+        uint16_t x_usb = static_cast<uint16_t>(cursor.x * 10000.0f / 18.0f);
+        uint16_t y_usb = static_cast<uint16_t>(cursor.y * 10000.0f / 10.0f);
+        report[1] = 0x02;
+        report[2] = static_cast<uint8_t>(x_usb & 0xFF);
+        report[3] = static_cast<uint8_t>((x_usb >> 8) & 0xFF);
+        report[4] = static_cast<uint8_t>(y_usb & 0xFF);
+        report[5] = static_cast<uint8_t>((y_usb >> 8) & 0xFF);
+    }
+    USB::send_hid_report(report, sizeof(report));
 }
 
 Tablet::Cursor Tablet::find_centroid(const uint16_t* grid) {

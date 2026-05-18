@@ -19,6 +19,7 @@ public:
 
 private:
     Cursor find_centroid(const uint16_t* grid);
+    void update_cursor(const Cursor& cursor);
 
     SensorGrid sensor_grid_;
     Telemetry telemetry_;

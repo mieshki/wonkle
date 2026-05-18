@@ -16,8 +16,6 @@ int main() {
     g_tablet = Tablet();
     g_tablet.init();
 
-    USB::set_sensor_grid(&g_tablet.get_sensor_grid());
-
     SensorGridBenchmark bench(g_tablet.get_sensor_grid());
 
     while (1) {

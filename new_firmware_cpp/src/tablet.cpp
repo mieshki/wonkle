@@ -4,7 +4,6 @@
 #include "logger/rtt.hpp"
 
 extern "C" {
-#include "core_cm4.h"
 #include "stm32f4xx_hal.h"
 }
 
@@ -52,73 +51,31 @@ void Tablet::init() {
     USB::init();
     sensor_grid_.init();
     telemetry_.init(sensor_grid_);
+    profiler_.init();
     RTT::printf("Init done\n");
     RTT::printf("Config: mux_settling=%u, adc_sampling=%s, adc_dummy_reads=%u\n",
                 static_cast<unsigned>(sensor_grid_.getMuxSettling()),
                 adcSamplingLabel(sensor_grid_.getAdcSampling()),
                 static_cast<unsigned>(sensor_grid_.getAdcDummyReads()));
-
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    DWT->CYCCNT = 0;
-    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-    tick_start_ = HAL_GetTick();
 }
 
 void Tablet::tick(bool measure) {
+    profiler_.begin(measure);
+
     telemetry_.service();
 
-    uint32_t t0 = 0, t1 = 0, t2 = 0, t3 = 0;
-    if (measure) {
-        t0 = DWT->CYCCNT;
-    }
-
     sensor_grid_.scan_grid(grid_);
-
-    if (measure) {
-        t1 = DWT->CYCCNT;
-    }
+    profiler_.mark_scan();
 
     auto cursor = find_centroid(grid_);
-
-    if (measure) {
-        t2 = DWT->CYCCNT;
-    }
+    profiler_.mark_centroid();
 
     update_cursor(cursor);
 
+    profiler_.mark_usb();
+    profiler_.report_if_due();
+
     telemetry_.feed_grid(grid_, cursor.x, cursor.y, cursor.valid);
-
-    if (measure) {
-        t3 = DWT->CYCCNT;
-        sum_scan_ += t1 - t0;
-        sum_centroid_ += t2 - t1;
-        sum_usb_ += t3 - t2;
-        sum_cycles_ += t3 - t0;
-        iterations_++;
-
-        uint32_t elapsed = HAL_GetTick() - tick_start_;
-        if (elapsed >= 2000) {
-            uint32_t hz = (iterations_ * 1000) / elapsed;
-            uint64_t cycles_per_iter = sum_cycles_ / iterations_;
-            uint32_t us_total = static_cast<uint32_t>((static_cast<uint64_t>(cycles_per_iter) * 1000000ULL) / SystemCoreClock);
-            uint32_t us_scan = static_cast<uint32_t>((sum_scan_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
-            uint32_t us_centroid = static_cast<uint32_t>((sum_centroid_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
-            uint32_t us_usb = static_cast<uint32_t>((sum_usb_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
-            RTT::printf("%u Hz | scan=%uus centroid=%uus usb=%uus total=%uus\n",
-                        static_cast<unsigned>(hz),
-                        static_cast<unsigned>(us_scan),
-                        static_cast<unsigned>(us_centroid),
-                        static_cast<unsigned>(us_usb),
-                        static_cast<unsigned>(us_total));
-            tick_start_ = HAL_GetTick();
-            iterations_ = 0;
-            sum_scan_ = 0;
-            sum_centroid_ = 0;
-            sum_usb_ = 0;
-            sum_cycles_ = 0;
-        }
-    }
 }
 
 void Tablet::update_cursor(const Cursor& cursor) {

@@ -39,6 +39,7 @@ set(SRC_SOURCES
       src/sensor_grid.cpp
       src/tablet.cpp
       src/telemetry.cpp
+      src/performance_profiler.cpp
       src/benchmarks/grid_performance.cpp
       src/usb/usb.cpp
   )

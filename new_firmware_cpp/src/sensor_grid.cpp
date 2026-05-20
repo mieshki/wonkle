@@ -149,10 +149,19 @@ void SensorGrid::selectRow(uint8_t rowIdx) {
 }
 
 void SensorGrid::scan_grid(uint16_t* out) {
+    uint32_t mux_total = 0;
+    uint32_t read_total = 0;
+    uint32_t read_count = 0;
+    uint32_t per_sensor_total = 0;
+
     for (uint8_t row = 0; row < Pins::ROWS; ++row) {
         selectRow(row);
 
-        for (volatile uint32_t i = 0; i < muxSettling_; i++) { __NOP(); }
+        {
+            uint32_t before = DWT->CYCCNT;
+            for (volatile uint32_t i = 0; i < muxSettling_; i++) { __NOP(); }
+            mux_total += DWT->CYCCNT - before;
+        }
 
         if (!oversampleEnabled_ && adcDummyReads_ > 0) {
             for (uint8_t d = 0; d < adcDummyReads_; d++) {
@@ -172,6 +181,8 @@ void SensorGrid::scan_grid(uint16_t* out) {
             const auto& c = Pins::COL[col];
             ADC_TypeDef* adc = c.adc;
 
+            uint32_t before = DWT->CYCCNT;
+
             if (oversampleEnabled_) {
                 uint8_t totalReads = adcDummyReads_ + 1;
                 uint32_t accum = 0;
@@ -187,9 +198,19 @@ void SensorGrid::scan_grid(uint16_t* out) {
                 SET_BIT(adc->CR2, ADC_CR2_SWSTART);
                 while (!(adc->SR & ADC_SR_EOC)) {}
                 out[row * Pins::COLS + col] = static_cast<uint16_t>(adc->DR);
+
+                read_total += DWT->CYCCNT - before;
+                read_count++;
             }
+
+            per_sensor_total += DWT->CYCCNT - before;
         }
     }
+
+    constexpr uint32_t TOTAL_SENSORS = Pins::ROWS * Pins::COLS;
+    lastScanTiming_.mux_cycles = mux_total / Pins::ROWS;
+    lastScanTiming_.single_read_cycles = (read_count > 0) ? (read_total / read_count) : 0;
+    lastScanTiming_.tuning_overhead_cycles = per_sensor_total / TOTAL_SENSORS;
 }
 
 void SensorGrid::setMuxSettling(uint32_t cycles) {

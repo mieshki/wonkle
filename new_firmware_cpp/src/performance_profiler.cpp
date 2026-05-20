@@ -1,4 +1,5 @@
 #include "performance_profiler.hpp"
+#include "sensor_grid.hpp"
 #include "logger/rtt.hpp"
 
 extern "C" {
@@ -39,6 +40,14 @@ void PerformanceProfiler::mark_usb() {
     iterations_++;
 }
 
+void PerformanceProfiler::record_scan_details(const SensorGrid& grid) {
+    if (!enabled_) return;
+    const auto& t = grid.getLastScanTiming();
+    sum_mux_ += t.mux_cycles;
+    sum_single_read_ += t.single_read_cycles;
+    sum_tuning_overhead_ += t.tuning_overhead_cycles;
+}
+
 void PerformanceProfiler::report_if_due() {
     if (!enabled_) return;
     uint32_t elapsed = HAL_GetTick() - tick_start_;
@@ -49,21 +58,33 @@ void PerformanceProfiler::report_if_due() {
         uint32_t us_scan = static_cast<uint32_t>((sum_scan_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
         uint32_t us_centroid = static_cast<uint32_t>((sum_centroid_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
         uint32_t us_usb = static_cast<uint32_t>((sum_usb_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
+        uint32_t us_mux = static_cast<uint32_t>((sum_mux_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
+        uint32_t us_single_read = static_cast<uint32_t>((sum_single_read_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
+        uint32_t us_tuning_overhead = static_cast<uint32_t>((sum_tuning_overhead_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
         last_hz_ = hz;
-        last_scan_us_ = us_total;
+        last_scan_us_ = us_scan;
         last_centroid_us_ = us_centroid;
         last_usb_us_ = us_usb;
-        RTT::printf("%u Hz | scan=%uus centroid=%uus usb=%uus total=%uus\n",
+        last_mux_us_ = us_mux;
+        last_single_read_us_ = us_single_read;
+        last_tuning_overhead_us_ = us_tuning_overhead;
+        RTT::printf("%u Hz | scan=%uus centroid=%uus usb=%uus total=%uus mux_settling=%uus single_read=%uus oversampling=%uus\n",
                     static_cast<unsigned>(hz),
                     static_cast<unsigned>(us_scan),
                     static_cast<unsigned>(us_centroid),
                     static_cast<unsigned>(us_usb),
-                    static_cast<unsigned>(us_total));
+                    static_cast<unsigned>(us_total),
+                    static_cast<unsigned>(us_mux),
+                    static_cast<unsigned>(us_single_read),
+                    static_cast<unsigned>(us_tuning_overhead));
         tick_start_ = HAL_GetTick();
         iterations_ = 0;
         sum_scan_ = 0;
         sum_centroid_ = 0;
         sum_usb_ = 0;
         sum_cycles_ = 0;
+        sum_mux_ = 0;
+        sum_single_read_ = 0;
+        sum_tuning_overhead_ = 0;
     }
 }

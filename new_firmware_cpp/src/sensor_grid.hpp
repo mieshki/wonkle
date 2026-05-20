@@ -4,6 +4,7 @@
 
 extern "C" {
 #include "stm32f4xx_hal.h"
+#include "core_cm4.h"
 }
 
 enum class AdcSampling : uint8_t {
@@ -36,6 +37,12 @@ constexpr const char* adcSamplingLabel(AdcSampling s) {
 
 class SensorGridBenchmark;
 
+struct ScanTiming {
+    uint32_t mux_cycles             = 0;
+    uint32_t single_read_cycles     = 0;
+    uint32_t tuning_overhead_cycles = 0;
+};
+
 class SensorGrid {
     friend class SensorGridBenchmark;
 
@@ -55,6 +62,8 @@ public:
     bool getOversampleEnabled() const { return oversampleEnabled_; }
     void setOversampleEnabled(bool enabled);
 
+    const ScanTiming& getLastScanTiming() const { return lastScanTiming_; }
+
 private:
     void initMuxGpio();
     void initAdcGpio();
@@ -71,6 +80,8 @@ private:
     AdcSampling adcSampling_     = AdcSampling::Cycles3;
     uint8_t     adcDummyReads_   = 3;
     bool        oversampleEnabled_ = true;
+
+    ScanTiming  lastScanTiming_;
 
     ADC_HandleTypeDef* getAdc(ADC_TypeDef* instance);
     void configureChannel(ADC_HandleTypeDef* hadc, uint8_t channel);

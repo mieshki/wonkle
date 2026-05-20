@@ -74,15 +74,18 @@ void Telemetry::send_config() {
 
 void Telemetry::send_perf() {
     static CdcPerfResponse resp;
-    resp.sync_lo     = SYNC_LO;
-    resp.sync_hi     = SYNC_HI;
-    resp.version     = PROTOCOL_VERSION;
-    resp.msg_type    = MSG_PERF;
-    resp.seq         = 0;
-    resp.hz          = profiler_->get_last_hz();
-    resp.scan_us     = profiler_->get_last_scan_us();
-    resp.centroid_us = profiler_->get_last_centroid_us();
-    resp.usb_us      = profiler_->get_last_usb_us();
+    resp.sync_lo             = SYNC_LO;
+    resp.sync_hi             = SYNC_HI;
+    resp.version             = PROTOCOL_VERSION;
+    resp.msg_type            = MSG_PERF;
+    resp.seq                 = 0;
+    resp.hz                  = profiler_->get_last_hz();
+    resp.scan_us             = profiler_->get_last_scan_us();
+    resp.centroid_us         = profiler_->get_last_centroid_us();
+    resp.usb_us              = profiler_->get_last_usb_us();
+    resp.mux_us              = profiler_->get_last_mux_us();
+    resp.single_read_us      = profiler_->get_last_single_read_us();
+    resp.tuning_overhead_us  = profiler_->get_last_tuning_overhead_us();
 
     uint8_t *payload = reinterpret_cast<uint8_t*>(&resp);
     uint16_t payload_len = static_cast<uint16_t>(offsetof(CdcPerfResponse, crc));
@@ -154,11 +157,7 @@ void Telemetry::on_command(uint8_t cmd, const uint8_t *data, uint8_t len) {
         }
         break;
     case CMD_GET_PERF:
-        RTT::printf("CDC: get_perf requested (hz=%u scan=%uus centroid=%uus usb=%uus)\n",
-                    static_cast<unsigned>(profiler_->get_last_hz()),
-                    static_cast<unsigned>(profiler_->get_last_scan_us()),
-                    static_cast<unsigned>(profiler_->get_last_centroid_us()),
-                    static_cast<unsigned>(profiler_->get_last_usb_us()));
+        RTT::printf("CDC: get_perf requested\n");
         send_perf();
         break;
     default:

@@ -29,6 +29,7 @@ void Tablet::tick(bool measure) {
 
     sensor_grid_.scan_grid(grid_.data());
     profiler_.mark_scan();
+    profiler_.record_scan_details(sensor_grid_);
 
     auto cursor = find_centroid(grid_.data());
     profiler_.mark_centroid();

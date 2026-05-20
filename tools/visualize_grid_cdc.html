@@ -827,15 +827,15 @@ function parse(bytes) {
 
     // ── Performance response (type 0x30) ──
     if (type === MSG_PERF) {
-      if (buf.length < 24) return;
-      const payload = buf.slice(0, 22);
-      const got = buf[22] | (buf[23] << 8);
+      if (buf.length < 36) return;
+      const payload = buf.slice(0, 34);
+      const got = buf[34] | (buf[35] << 8);
       if (crc16(payload) !== got) { buf = buf.slice(2); continue; }
       const hz = payload[6] | (payload[7] << 8) | (payload[8] << 16) | (payload[9] << 24);
       if (hz > 0) {
         perfHz = hz;
       }
-      buf = buf.slice(24);
+      buf = buf.slice(36);
       continue;
     }
 
@@ -976,6 +976,7 @@ async function disconnect() {
   if (port) { try { await port.close(); } catch {} port = null; }
   selectedPort = null;
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  setStatus(false);
   setActiveView(null);
   document.getElementById('view-sensor').classList.add('disabled');
   document.getElementById('view-none').classList.add('disabled');

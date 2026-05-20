@@ -13,7 +13,7 @@ void Tablet::init() {
     RTT::printf("Initializing...\n");
     USB::init();
     sensor_grid_.init();
-    telemetry_.init(sensor_grid_);
+    telemetry_.init(sensor_grid_, profiler_);
     profiler_.init();
     RTT::printf("Init done\n");
     RTT::printf("Config: mux_settling=%u, adc_sampling=%s, adc_dummy_reads=%u\n",

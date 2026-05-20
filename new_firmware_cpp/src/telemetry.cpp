@@ -7,8 +7,9 @@ extern "C" {
 #include "crc16.h"
 }
 
-void Telemetry::init(SensorGrid& grid) {
+void Telemetry::init(SensorGrid& grid, PerformanceProfiler& profiler) {
     grid_ = &grid;
+    profiler_ = &profiler;
 }
 
 void Telemetry::service() {
@@ -66,6 +67,25 @@ void Telemetry::send_config() {
 
     uint8_t *payload = reinterpret_cast<uint8_t*>(&resp);
     uint16_t payload_len = static_cast<uint16_t>(offsetof(CdcConfigResponse, crc));
+    resp.crc = frame_crc(payload, payload_len);
+
+    USB::cdc_send_frame(reinterpret_cast<const uint8_t*>(&resp), sizeof(resp));
+}
+
+void Telemetry::send_perf() {
+    static CdcPerfResponse resp;
+    resp.sync_lo     = SYNC_LO;
+    resp.sync_hi     = SYNC_HI;
+    resp.version     = PROTOCOL_VERSION;
+    resp.msg_type    = MSG_PERF;
+    resp.seq         = 0;
+    resp.hz          = profiler_->get_last_hz();
+    resp.scan_us     = profiler_->get_last_scan_us();
+    resp.centroid_us = profiler_->get_last_centroid_us();
+    resp.usb_us      = profiler_->get_last_usb_us();
+
+    uint8_t *payload = reinterpret_cast<uint8_t*>(&resp);
+    uint16_t payload_len = static_cast<uint16_t>(offsetof(CdcPerfResponse, crc));
     resp.crc = frame_crc(payload, payload_len);
 
     USB::cdc_send_frame(reinterpret_cast<const uint8_t*>(&resp), sizeof(resp));
@@ -132,6 +152,14 @@ void Telemetry::on_command(uint8_t cmd, const uint8_t *data, uint8_t len) {
             grid_->setOversampleEnabled(data[0] != 0);
             RTT::printf("CDC: adc_oversample=%s\n", data[0] ? "on" : "off");
         }
+        break;
+    case CMD_GET_PERF:
+        RTT::printf("CDC: get_perf requested (hz=%u scan=%uus centroid=%uus usb=%uus)\n",
+                    static_cast<unsigned>(profiler_->get_last_hz()),
+                    static_cast<unsigned>(profiler_->get_last_scan_us()),
+                    static_cast<unsigned>(profiler_->get_last_centroid_us()),
+                    static_cast<unsigned>(profiler_->get_last_usb_us()));
+        send_perf();
         break;
     default:
         RTT::printf("CDC: Unknown command!\n");

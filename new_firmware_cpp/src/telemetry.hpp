@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "sensor_grid.hpp"
+#include "performance_profiler.hpp"
 
 constexpr uint8_t PROTOCOL_VERSION        = 0x01;
 constexpr uint8_t SYNC_LO                 = 0xAA;
@@ -9,6 +10,7 @@ constexpr uint8_t SYNC_HI                 = 0x55;
 constexpr uint8_t SUB_GRID                = (1 << 0);
 
 constexpr uint8_t MSG_GRID                = 0x10;
+constexpr uint8_t MSG_PERF                = 0x30;
 
 constexpr uint8_t CMD_SUBSCRIBE           = 0x01;
 constexpr uint8_t CMD_UNSUBSCRIBE         = 0x04;
@@ -18,6 +20,7 @@ constexpr uint8_t CMD_SET_ADC_SAMPLING    = 0x11;
 constexpr uint8_t CMD_GET_CONFIG          = 0x12;
 constexpr uint8_t CMD_SET_ADC_DUMMY_READS = 0x13;
 constexpr uint8_t CMD_SET_ADC_OVERSAMPLE  = 0x14;
+constexpr uint8_t CMD_GET_PERF            = 0x15;
 
 struct __attribute__((packed)) CdcFrameHeader {
     uint8_t  sync_lo;
@@ -57,13 +60,28 @@ struct __attribute__((packed)) CdcConfigResponse {
 };
 static_assert(sizeof(CdcConfigResponse) == 15, "CdcConfigResponse padding");
 
+struct __attribute__((packed)) CdcPerfResponse {
+    uint8_t  sync_lo;
+    uint8_t  sync_hi;
+    uint8_t  version;
+    uint8_t  msg_type;
+    uint16_t seq;
+    uint32_t hz;
+    uint32_t scan_us;
+    uint32_t centroid_us;
+    uint32_t usb_us;
+    uint16_t crc;
+};
+static_assert(sizeof(CdcPerfResponse) == 24, "CdcPerfResponse padding");
+
 class Telemetry {
 public:
-    void init(SensorGrid& grid);
+    void init(SensorGrid& grid, PerformanceProfiler& profiler);
 
     void service();
     void feed_grid(const uint16_t *grid, float cx, float cy, bool cvalid);
     void send_config();
+    void send_perf();
 
     bool is_subscribed(uint8_t flag) const {
         return (subscriptions_ & flag) != 0;
@@ -74,8 +92,9 @@ private:
     void parse_rx();
 
     SensorGrid* grid_ = nullptr;
+    PerformanceProfiler* profiler_ = nullptr;
 
-    static constexpr uint8_t GRID_SEND_EVERY_N_TICKS = 11;
+    static constexpr uint8_t GRID_SEND_EVERY_N_TICKS = 10;
 
     uint8_t  subscriptions_   = 0;
     uint16_t frame_counter_   = 0;

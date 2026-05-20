@@ -671,7 +671,6 @@
     <div class="tuning-spacer"></div>
     <div class="tuning-perf">
       <span>Hz</span> <b id="perf-hz">—</b> ·
-      <span>Scan</span> <b id="perf-scan">—</b> ·
       <span>Render</span> <b id="perf-fps">0 fps</b> ·
       <span>Lost</span> <b id="perf-lost" style="color:var(--red);">0</b>
     </div>
@@ -695,6 +694,8 @@ const CMD_SET_MUX_SETTLING     = 0x10;
 const CMD_SET_ADC_SAMPLING     = 0x11;
 const CMD_SET_ADC_DUMMY_READS  = 0x13;
 const CMD_SET_ADC_OVERSAMPLE   = 0x14;
+const CMD_GET_PERF             = 0x15;
+const MSG_PERF                 = 0x30;
 const FLAG_GRID                = 0x01;
 
 const SAMPLING_TIMES = [3, 15, 28, 56, 84, 112, 144, 480];
@@ -734,6 +735,7 @@ let buf = [];
 let cnt = -1;
 let frames = 0;
 let lost = 0;
+let pollTimer = null;
 
 // ── Sensor data ──
 let grid = new Uint16Array(SIZE);
@@ -820,6 +822,20 @@ function parse(bytes) {
       const oversample  = payload[12];
       applyConfigResponse(settling, samplingIdx, dummyReads, oversample);
       buf = buf.slice(15);
+      continue;
+    }
+
+    // ── Performance response (type 0x30) ──
+    if (type === MSG_PERF) {
+      if (buf.length < 24) return;
+      const payload = buf.slice(0, 22);
+      const got = buf[22] | (buf[23] << 8);
+      if (crc16(payload) !== got) { buf = buf.slice(2); continue; }
+      const hz = payload[6] | (payload[7] << 8) | (payload[8] << 16) | (payload[9] << 24);
+      if (hz > 0) {
+        perfHz = hz;
+      }
+      buf = buf.slice(24);
       continue;
     }
 
@@ -945,6 +961,9 @@ async function connect() {
   activeView = null;
   document.getElementById('tuning-strip').classList.add('visible');
   await sendCommand(CMD_GET_CONFIG);
+
+  // Start periodic perf polling (every 2s)
+  pollTimer = setInterval(() => { if (alive) sendCommand(CMD_GET_PERF); }, 2000);
 }
 
 async function disconnect() {
@@ -956,7 +975,7 @@ async function disconnect() {
   if (reader) { try { await reader.cancel(); } catch {} reader = null; }
   if (port) { try { await port.close(); } catch {} port = null; }
   selectedPort = null;
-  setStatus(false);
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   setActiveView(null);
   document.getElementById('view-sensor').classList.add('disabled');
   document.getElementById('view-none').classList.add('disabled');
@@ -1013,7 +1032,6 @@ function setStatus(on) {
     bc.disabled = false;
     bd.disabled = true;
     document.getElementById('perf-hz').textContent = '—';
-    document.getElementById('perf-scan').textContent = '—';
     document.getElementById('perf-fps').textContent = '0 fps';
     document.getElementById('perf-lost').textContent = '0';
     document.getElementById('ov-cursor').textContent = '—';
@@ -1443,6 +1461,7 @@ function setMuxSettling(v) {
     (currentMuxSettling >> 16) & 0xFF,
     (currentMuxSettling >> 24) & 0xFF,
   ]));
+  resetNoiseHeatmap();
 }
 
 function setAdcSampling(idx) {
@@ -1450,6 +1469,7 @@ function setAdcSampling(idx) {
   currentAdcSampling = idx;
   document.getElementById('adc-sampling-select').value = idx;
   sendCommand(CMD_SET_ADC_SAMPLING, new Uint8Array([idx]));
+  resetNoiseHeatmap();
 }
 
 function setAdcDummyReads(v) {
@@ -1457,12 +1477,14 @@ function setAdcDummyReads(v) {
   document.getElementById('adc-dummy-reads-display').textContent = currentAdcDummyReads;
   document.getElementById('adc-dummy-reads-slider').value = currentAdcDummyReads;
   sendCommand(CMD_SET_ADC_DUMMY_READS, new Uint8Array([currentAdcDummyReads]));
+  resetNoiseHeatmap();
 }
 
 function toggleAdcOversample() {
   currentAdcOversample = currentAdcOversample ? 0 : 1;
   updateOversampleUI();
   sendCommand(CMD_SET_ADC_OVERSAMPLE, new Uint8Array([currentAdcOversample]));
+  resetNoiseHeatmap();
 }
 
 function updateOversampleUI() {
@@ -1710,7 +1732,6 @@ function draw(ts) {
 
   if (perfHz > 0) {
     document.getElementById('perf-hz').textContent = `${perfHz} Hz`;
-    document.getElementById('perf-scan').textContent = `${perfScan} µs`;
   }
   document.getElementById('perf-lost').textContent = lost;
 }

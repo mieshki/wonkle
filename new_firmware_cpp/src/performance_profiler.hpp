@@ -12,6 +12,11 @@ public:
     void mark_usb();
     void report_if_due();
 
+    uint32_t get_last_hz() const { return last_hz_; }
+    uint32_t get_last_scan_us() const { return last_scan_us_; }
+    uint32_t get_last_centroid_us() const { return last_centroid_us_; }
+    uint32_t get_last_usb_us() const { return last_usb_us_; }
+
 private:
     bool enabled_ = false;
     uint32_t t0_ = 0;
@@ -25,4 +30,9 @@ private:
     uint64_t sum_centroid_ = 0;
     uint64_t sum_usb_ = 0;
     uint64_t sum_cycles_ = 0;
+
+    uint32_t last_hz_ = 0;
+    uint32_t last_scan_us_ = 0;
+    uint32_t last_centroid_us_ = 0;
+    uint32_t last_usb_us_ = 0;
 };

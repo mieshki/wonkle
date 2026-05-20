@@ -49,6 +49,10 @@ void PerformanceProfiler::report_if_due() {
         uint32_t us_scan = static_cast<uint32_t>((sum_scan_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
         uint32_t us_centroid = static_cast<uint32_t>((sum_centroid_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
         uint32_t us_usb = static_cast<uint32_t>((sum_usb_ * 1000000ULL) / (static_cast<uint64_t>(iterations_) * SystemCoreClock));
+        last_hz_ = hz;
+        last_scan_us_ = us_total;
+        last_centroid_us_ = us_centroid;
+        last_usb_us_ = us_usb;
         RTT::printf("%u Hz | scan=%uus centroid=%uus usb=%uus total=%uus\n",
                     static_cast<unsigned>(hz),
                     static_cast<unsigned>(us_scan),

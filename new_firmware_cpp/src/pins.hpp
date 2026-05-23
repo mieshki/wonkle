@@ -24,6 +24,11 @@ constexpr uint8_t ROW_TO_MUX_CHANNEL[ROWS] = {10, 9, 8, 0, 1, 2, 3, 4, 5, 6, 7};
 
 struct Column { GPIO_TypeDef* port; uint16_t pin; ADC_TypeDef* adc; uint8_t ch; };
 
+inline GPIO_TypeDef* const BTN1_PORT = GPIOE;
+constexpr uint16_t           BTN1_PIN  = GPIO_PIN_0;
+inline GPIO_TypeDef* const BTN2_PORT = GPIOE;
+constexpr uint16_t           BTN2_PIN  = GPIO_PIN_1;
+
 constexpr Column COL[COLS] = {
     {GPIOF, GPIO_PIN_3,  ADC3,  9},
     {GPIOF, GPIO_PIN_4,  ADC3, 14},

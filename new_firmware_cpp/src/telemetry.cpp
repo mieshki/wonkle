@@ -62,7 +62,7 @@ void Telemetry::send_config() {
     resp.seq      = 0;
     resp.mux_settling    = grid_->getMuxSettling();
     resp.adc_sampling    = static_cast<uint8_t>(grid_->getAdcSampling());
-    resp.adc_dummy_reads  = grid_->getAdcDummyReads();
+    resp.adc_re_reads  = grid_->getAdcReReads();
     resp.adc_oversample   = grid_->getOversampleEnabled() ? 1 : 0;
 
     uint8_t *payload = reinterpret_cast<uint8_t*>(&resp);
@@ -144,10 +144,10 @@ void Telemetry::on_command(uint8_t cmd, const uint8_t *data, uint8_t len) {
         RTT::printf("CDC: get_config requested\n");
         send_config();
         break;
-    case CMD_SET_ADC_DUMMY_READS:
+    case CMD_SET_ADC_RE_READS:
         if (len >= 1) {
-            grid_->setAdcDummyReads(data[0]);
-            RTT::printf("CDC: adc_dummy_reads=%u\n", static_cast<unsigned>(data[0]));
+            grid_->setAdcReReads(data[0]);
+            RTT::printf("CDC: adc_re_reads=%u\n", static_cast<unsigned>(data[0]));
         }
         break;
     case CMD_SET_ADC_OVERSAMPLE:

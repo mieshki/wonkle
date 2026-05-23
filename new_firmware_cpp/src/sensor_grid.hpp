@@ -56,8 +56,8 @@ public:
     AdcSampling getAdcSampling() const { return adcSampling_; }
     void setAdcSampling(AdcSampling s);
 
-    uint8_t getAdcDummyReads() const { return adcDummyReads_; }
-    void setAdcDummyReads(uint8_t count);
+    uint8_t getAdcReReads() const { return adcReReads_; }
+    void setAdcReReads(uint8_t count);
 
     bool getOversampleEnabled() const { return oversampleEnabled_; }
     void setOversampleEnabled(bool enabled);
@@ -78,7 +78,7 @@ private:
 
     uint32_t    muxSettling_     = 4000;
     AdcSampling adcSampling_     = AdcSampling::Cycles3;
-    uint8_t     adcDummyReads_   = 3;
+    uint8_t     adcReReads_   = 3;
     bool        oversampleEnabled_ = true;
 
     ScanTiming  lastScanTiming_;

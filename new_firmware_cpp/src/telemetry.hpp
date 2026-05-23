@@ -18,7 +18,7 @@ constexpr uint8_t CMD_UNSUBSCRIBE_TO      = 0x06;
 constexpr uint8_t CMD_SET_MUX_SETTLING    = 0x10;
 constexpr uint8_t CMD_SET_ADC_SAMPLING    = 0x11;
 constexpr uint8_t CMD_GET_CONFIG          = 0x12;
-constexpr uint8_t CMD_SET_ADC_DUMMY_READS = 0x13;
+constexpr uint8_t CMD_SET_ADC_RE_READS    = 0x13;
 constexpr uint8_t CMD_SET_ADC_OVERSAMPLE  = 0x14;
 constexpr uint8_t CMD_GET_PERF            = 0x15;
 
@@ -54,7 +54,7 @@ struct __attribute__((packed)) CdcConfigResponse {
     uint16_t seq;
     uint32_t mux_settling;
     uint8_t  adc_sampling;
-    uint8_t  adc_dummy_reads;
+    uint8_t  adc_re_reads;
     uint8_t  adc_oversample;
     uint16_t crc;
 };

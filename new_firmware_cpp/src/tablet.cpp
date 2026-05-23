@@ -16,10 +16,10 @@ void Tablet::init() {
     telemetry_.init(sensor_grid_, profiler_);
     profiler_.init();
     RTT::printf("Init done\n");
-    RTT::printf("Config: mux_settling=%u, adc_sampling=%s, adc_dummy_reads=%u\n",
+    RTT::printf("Config: mux_settling=%u, adc_sampling=%s, adc_re_reads=%u\n",
                 static_cast<unsigned>(sensor_grid_.getMuxSettling()),
                 adcSamplingLabel(sensor_grid_.getAdcSampling()),
-                static_cast<unsigned>(sensor_grid_.getAdcDummyReads()));
+                static_cast<unsigned>(sensor_grid_.getAdcReReads()));
 }
 
 void Tablet::tick(bool measure) {

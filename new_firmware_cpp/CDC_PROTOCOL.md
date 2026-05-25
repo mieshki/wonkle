@@ -38,19 +38,20 @@ Grid is 11 rows × 19 columns, sent every Nth tick (default N=10) when subscribe
 | 12     | 1    | uint8  | adc_oversample (0 or 1) |
 | 13     | 2    | uint16 | crc16         |
 
-### Perf Response (msg_type = 0x30) — 36 bytes
+### Perf Response (msg_type = 0x30) — 40 bytes
 
 | Offset | Size | Type   | Field             |
 |--------|------|--------|-------------------|
 | 0      | 6    | header |                   |
 | 6      | 4    | uint32 | hz                |
-| 10     | 4    | uint32 | scan_us           |
-| 14     | 4    | uint32 | centroid_us       |
-| 18     | 4    | uint32 | usb_us            |
-| 22     | 4    | uint32 | mux_us            |
-| 26     | 4    | uint32 | single_read_us    |
-| 30     | 4    | uint32 | tuning_overhead_us|
-| 34     | 2    | uint16 | crc16             |
+| 10     | 4    | uint32 | telemetry_service_us|
+| 14     | 4    | uint32 | scan_us           |
+| 18     | 4    | uint32 | centroid_us       |
+| 22     | 4    | uint32 | usb_us            |
+| 26     | 4    | uint32 | mux_us            |
+| 30     | 4    | uint32 | single_read_us    |
+| 34     | 4    | uint32 | tuning_overhead_us|
+| 38     | 2    | uint16 | crc16             |
 
 ## Host → Device Commands
 

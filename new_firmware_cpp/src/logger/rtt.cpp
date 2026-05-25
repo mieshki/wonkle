@@ -11,7 +11,7 @@ namespace RTT {
     void printf(const char* fmt, ...) {
         va_list args;
         va_start(args, fmt);
-        char buf[128];
+        char buf[256];
         vsnprintf(buf, sizeof(buf), fmt, args);
         SEGGER_RTT_WriteString(0, buf);
         va_end(args);

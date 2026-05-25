@@ -26,6 +26,7 @@ void Tablet::tick(bool measure) {
     profiler_.begin(measure);
 
     telemetry_.service();
+    profiler_.mark_telemetry_service();
 
     sensor_grid_.scan_grid(grid_.data());
     profiler_.mark_scan();

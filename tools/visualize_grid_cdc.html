@@ -827,15 +827,15 @@ function parse(bytes) {
 
     // ── Performance response (type 0x30) ──
     if (type === MSG_PERF) {
-      if (buf.length < 36) return;
-      const payload = buf.slice(0, 34);
-      const got = buf[34] | (buf[35] << 8);
+      if (buf.length < 40) return;
+      const payload = buf.slice(0, 38);
+      const got = buf[38] | (buf[39] << 8);
       if (crc16(payload) !== got) { buf = buf.slice(2); continue; }
       const hz = payload[6] | (payload[7] << 8) | (payload[8] << 16) | (payload[9] << 24);
       if (hz > 0) {
         perfHz = hz;
       }
-      buf = buf.slice(36);
+      buf = buf.slice(40);
       continue;
     }
 

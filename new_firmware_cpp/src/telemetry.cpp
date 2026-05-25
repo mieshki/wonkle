@@ -80,6 +80,7 @@ void Telemetry::send_perf() {
     resp.msg_type            = MSG_PERF;
     resp.seq                 = 0;
     resp.hz                  = profiler_->get_last_hz();
+    resp.telemetry_service_us          = profiler_->get_last_telemetry_service_us();
     resp.scan_us             = profiler_->get_last_scan_us();
     resp.centroid_us         = profiler_->get_last_centroid_us();
     resp.usb_us              = profiler_->get_last_usb_us();

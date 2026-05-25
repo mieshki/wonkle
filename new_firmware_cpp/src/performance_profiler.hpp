@@ -9,6 +9,7 @@ public:
 
     void init();
     void begin(bool enabled);
+    void mark_telemetry_service();
     void mark_scan();
     void mark_centroid();
     void mark_usb();
@@ -16,6 +17,7 @@ public:
     void report_if_due();
 
     uint32_t get_last_hz() const { return last_hz_; }
+    uint32_t get_last_telemetry_service_us() const { return last_telemetry_service_us_; }
     uint32_t get_last_scan_us() const { return last_scan_us_; }
     uint32_t get_last_centroid_us() const { return last_centroid_us_; }
     uint32_t get_last_usb_us() const { return last_usb_us_; }
@@ -25,13 +27,15 @@ public:
 
 private:
     bool enabled_ = false;
-    uint32_t t0_ = 0;
-    uint32_t t1_ = 0;
-    uint32_t t2_ = 0;
-    uint32_t t3_ = 0;
+    uint32_t t_begin_ = 0;
+    uint32_t t_telemetry_service_ = 0;
+    uint32_t t_scan_ = 0;
+    uint32_t t_centroid_ = 0;
+    uint32_t t_usb_ = 0;
 
     uint32_t tick_start_ = 0;
     uint32_t iterations_ = 0;
+    uint64_t sum_telemetry_service_ = 0;
     uint64_t sum_scan_ = 0;
     uint64_t sum_centroid_ = 0;
     uint64_t sum_usb_ = 0;
@@ -41,6 +45,7 @@ private:
     uint64_t sum_tuning_overhead_ = 0;
 
     uint32_t last_hz_ = 0;
+    uint32_t last_telemetry_service_us_ = 0;
     uint32_t last_scan_us_ = 0;
     uint32_t last_centroid_us_ = 0;
     uint32_t last_usb_us_ = 0;

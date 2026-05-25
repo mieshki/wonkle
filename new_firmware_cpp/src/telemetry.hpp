@@ -67,6 +67,7 @@ struct __attribute__((packed)) CdcPerfResponse {
     uint8_t  msg_type;
     uint16_t seq;
     uint32_t hz;
+    uint32_t telemetry_service_us;
     uint32_t scan_us;
     uint32_t centroid_us;
     uint32_t usb_us;
@@ -75,7 +76,7 @@ struct __attribute__((packed)) CdcPerfResponse {
     uint32_t tuning_overhead_us;
     uint16_t crc;
 };
-static_assert(sizeof(CdcPerfResponse) == 36, "CdcPerfResponse padding");
+static_assert(sizeof(CdcPerfResponse) == 40, "CdcPerfResponse padding");
 
 class Telemetry {
 public:

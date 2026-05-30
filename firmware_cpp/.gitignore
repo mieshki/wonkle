@@ -1,1 +1,12 @@
-compile_commands.json
+# Build output
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

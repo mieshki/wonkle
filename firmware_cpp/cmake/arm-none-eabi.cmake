@@ -12,7 +12,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 set(CMAKE_C_FLAGS "-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -Wall -fdata-sections -ffunction-sections")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -fno-exceptions -fno-rtti")
 set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_C_FLAGS} -T${CMAKE_SOURCE_DIR}/core/linker/STM32F429IGTx_FLASH.ld --specs=nosys.specs --specs=nano.specs -Wl,-Map=new_firmware.map -Wl,--gc-sections")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_C_FLAGS} -T${CMAKE_SOURCE_DIR}/core/linker/STM32F429IGTx_FLASH.ld --specs=nano.specs -Wl,-Map=new_firmware.map -Wl,--gc-sections")
 
 set(CMAKE_C_FLAGS_DEBUG "-Og -g")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -g")

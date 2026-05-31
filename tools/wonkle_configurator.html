@@ -668,6 +668,12 @@
       <button class="btn" id="adc-oversample-btn" type="button" style="padding:4px 10px;font-size:10px;" onclick="toggleAdcOversample()">Enable</button>
       <span class="tuning-value" id="adc-oversample-display">-1</span>
     </div>
+    <div class="tuning-divider"></div>
+    <div class="tuning-group">
+      <span class="tuning-label">EMA Alpha</span>
+      <input type="range" class="tuning-slider-h" id="ema-alpha-slider" min="0" max="100" step="1" value="0" oninput="setEmaAlpha(this.value)">
+      <span class="tuning-value" id="ema-alpha-display">-1</span>
+    </div>
     <div class="tuning-spacer"></div>
     <div class="tuning-perf">
       <span>Hz</span> <b id="perf-hz">—</b> ·
@@ -695,6 +701,7 @@ const CMD_SET_ADC_SAMPLING     = 0x11;
 const CMD_SET_ADC_RE_READS     = 0x13;
 const CMD_SET_ADC_OVERSAMPLE   = 0x14;
 const CMD_GET_PERF             = 0x15;
+const CMD_SET_EMA_ALPHA        = 0x16;
 const MSG_PERF                 = 0x30;
 const FLAG_GRID                = 0x01;
 
@@ -762,6 +769,7 @@ let currentMuxSettling = -1;
 let currentAdcSampling = -1;
 let currentAdcReReads = -1;
 let currentAdcOversample = -1;
+let currentEmaAlpha = -1;
 
 // ── Noise analysis state ──
 let noiseAcc = null;
@@ -812,16 +820,17 @@ function parse(bytes) {
 
     // ── Config response (type 0x20) ──
     if (type === 0x20) {
-      if (buf.length < 15) return;
-      const payload = buf.slice(0, 13);
-      const got = buf[13] | (buf[14] << 8);
+      if (buf.length < 16) return;
+      const payload = buf.slice(0, 14);
+      const got = buf[14] | (buf[15] << 8);
       if (crc16(payload) !== got) { buf = buf.slice(2); continue; }
       const settling    = payload[6] | (payload[7] << 8)  | (payload[8] << 16)  | (payload[9] << 24);
       const samplingIdx = payload[10];
       const reReads     = payload[11];
       const oversample  = payload[12];
-      applyConfigResponse(settling, samplingIdx, reReads, oversample);
-      buf = buf.slice(15);
+      const emaAlpha    = payload[13];
+      applyConfigResponse(settling, samplingIdx, reReads, oversample, emaAlpha);
+      buf = buf.slice(16);
       continue;
     }
 
@@ -990,6 +999,8 @@ async function disconnect() {
   currentAdcSampling = -1;
   currentAdcReReads = -1;
   currentAdcOversample = -1;
+  currentEmaAlpha = -1;
+  currentMedianEnabled = -1;
 }
 
 /** Continuous read loop — processes incoming serial data. */
@@ -1506,6 +1517,31 @@ function updateOversampleUI() {
   }
 }
 
+function setEmaAlpha(v) {
+  currentEmaAlpha = Math.round(parseInt(v) * 2.55);
+  const display = document.getElementById('ema-alpha-display');
+  const alpha = parseFloat(v) / 100;
+  display.textContent = alpha.toFixed(2);
+  document.getElementById('ema-alpha-slider').value = v;
+  sendCommand(CMD_SET_EMA_ALPHA, new Uint8Array([currentEmaAlpha]));
+}
+
+function updateEmaUI() {
+  const display = document.getElementById('ema-alpha-display');
+  const slider = document.getElementById('ema-alpha-slider');
+  if (currentEmaAlpha < 0) {
+    display.textContent = '-1';
+    display.style.color = '';
+    slider.value = 0;
+  } else {
+    const alpha = currentEmaAlpha / 255;
+    const pct = Math.round(alpha * 100);
+    display.textContent = alpha.toFixed(2);
+    display.style.color = 'var(--text-primary)';
+    slider.value = pct;
+  }
+}
+
 function initAdcSamplingSelect() {
   const sel = document.getElementById('adc-sampling-select');
   sel.innerHTML = '';
@@ -1517,17 +1553,19 @@ function initAdcSamplingSelect() {
   }
 }
 
-function applyConfigResponse(muxSettling, adcSampling, adcReReads, adcOversample) {
+function applyConfigResponse(muxSettling, adcSampling, adcReReads, adcOversample, emaAlpha) {
   currentMuxSettling   = muxSettling;
   currentAdcSampling   = adcSampling;
   currentAdcReReads = adcReReads ?? 0;
   currentAdcOversample = adcOversample ?? 0;
+  currentEmaAlpha = emaAlpha ?? 0;
   document.getElementById('mux-settling-display').textContent = currentMuxSettling;
   document.getElementById('mux-settling-slider').value = currentMuxSettling;
   document.getElementById('adc-sampling-select').value = currentAdcSampling >= 0 ? currentAdcSampling : '';
   document.getElementById('adc-re-reads-display').textContent = currentAdcReReads;
   document.getElementById('adc-re-reads-slider').value = currentAdcReReads;
   updateOversampleUI();
+  updateEmaUI();
   document.getElementById('tuning-strip').classList.add('visible');
 }
 

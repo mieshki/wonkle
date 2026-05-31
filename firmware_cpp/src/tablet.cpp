@@ -20,8 +20,9 @@ void Tablet::init() {
                 static_cast<unsigned>(sensor_grid_.getMuxSettling()),
                 adcSamplingLabel(sensor_grid_.getAdcSampling()),
                 static_cast<unsigned>(sensor_grid_.getAdcReReads()));
-    RTT::printf("Filters: ema_alpha=%.3f\n",
-                static_cast<double>(sensor_grid_.getEmaAlpha()));
+    uint32_t alpha_permille = static_cast<uint32_t>(sensor_grid_.getEmaAlpha() * 1000.0f);
+    RTT::printf("Filters: ema_alpha=0.%03u\n",
+                static_cast<unsigned>(alpha_permille));
 }
 
 void Tablet::tick(bool measure) {

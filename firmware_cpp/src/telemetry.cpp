@@ -166,8 +166,10 @@ void Telemetry::on_command(uint8_t cmd, const uint8_t *data, uint8_t len) {
         if (len >= 1) {
             float alpha = static_cast<float>(data[0]) / 255.0f;
             grid_->setEmaAlpha(alpha);
-            RTT::printf("CDC: ema_alpha=%.3f (raw=%u)\n",
-                        static_cast<double>(alpha), static_cast<unsigned>(data[0]));
+            uint32_t alpha_permille = static_cast<uint32_t>(alpha * 1000.0f);
+            RTT::printf("CDC: ema_alpha=0.%03u (raw=%u)\n",
+                        static_cast<unsigned>(alpha_permille),
+                        static_cast<unsigned>(data[0]));
         }
         break;
     default:

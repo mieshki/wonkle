@@ -64,6 +64,7 @@ void Telemetry::send_config() {
     resp.adc_sampling    = static_cast<uint8_t>(grid_->getAdcSampling());
     resp.adc_re_reads  = grid_->getAdcReReads();
     resp.adc_oversample   = grid_->getOversampleEnabled() ? 1 : 0;
+    resp.ema_alpha = static_cast<uint8_t>(grid_->getEmaAlpha() * 255.0f);
 
     uint8_t *payload = reinterpret_cast<uint8_t*>(&resp);
     uint16_t payload_len = static_cast<uint16_t>(offsetof(CdcConfigResponse, crc));
@@ -160,6 +161,14 @@ void Telemetry::on_command(uint8_t cmd, const uint8_t *data, uint8_t len) {
     case CMD_GET_PERF:
         RTT::printf("CDC: get_perf requested\n");
         send_perf();
+        break;
+    case CMD_SET_EMA_ALPHA:
+        if (len >= 1) {
+            float alpha = static_cast<float>(data[0]) / 255.0f;
+            grid_->setEmaAlpha(alpha);
+            RTT::printf("CDC: ema_alpha=%.3f (raw=%u)\n",
+                        static_cast<double>(alpha), static_cast<unsigned>(data[0]));
+        }
         break;
     default:
         RTT::printf("CDC: Unknown command!\n");

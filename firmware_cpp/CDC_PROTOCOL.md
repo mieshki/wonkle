@@ -27,7 +27,7 @@ Binary protocol over USB CDC (115200 8N1). Sync word `0xAA 0x55`, CRC-16-CCITT o
 
 Grid is 11 rows × 19 columns, sent every Nth tick (default N=10) when subscribed.
 
-### Config Response (msg_type = 0x20) — 15 bytes
+### Config Response (msg_type = 0x20) — 16 bytes
 
 | Offset | Size | Type   | Field         |
 |--------|------|--------|---------------|
@@ -36,7 +36,8 @@ Grid is 11 rows × 19 columns, sent every Nth tick (default N=10) when subscribe
 | 10     | 1    | uint8  | adc_sampling (index 0–7) |
 | 11     | 1    | uint8  | adc_re_reads (0–10) |
 | 12     | 1    | uint8  | adc_oversample (0 or 1) |
-| 13     | 2    | uint16 | crc16         |
+| 13     | 1    | uint8  | ema_alpha (0=off, 1–255 mapped to 0.0–1.0) |
+| 14     | 2    | uint16 | crc16         |
 
 ### Perf Response (msg_type = 0x30) — 40 bytes
 
@@ -57,17 +58,18 @@ Grid is 11 rows × 19 columns, sent every Nth tick (default N=10) when subscribe
 
 Single-byte command + optional payload.
 
-| Cmd  | Name            | Payload                      |
-|------|-----------------|------------------------------|
-| 0x01 | Subscribe       | uint8 flags (0x01=grid). Omit payload to subscribe all. |
-| 0x04 | Unsubscribe All | —                            |
-| 0x06 | Unsubscribe     | uint8 flags to clear         |
-| 0x10 | Set Mux Settling| uint32 (cycles)              |
-| 0x11 | Set ADC Sampling| uint8 index: 0=3c, 1=15c, 2=28c, 3=56c, 4=84c, 5=112c, 6=144c, 7=480c |
-| 0x12 | Get Config      | —                            |
-| 0x13 | Set ADC Re-Reads| uint8 count (0–10)           |
-| 0x14 | Set ADC Oversample | uint8: 0=off, non-zero=on |
-| 0x15 | Get Perf        | —                            |
+| Cmd  | Name               | Payload                      |
+|------|--------------------|------------------------------|
+| 0x01 | Subscribe          | uint8 flags (0x01=grid). Omit payload to subscribe all. |
+| 0x04 | Unsubscribe All    | —                            |
+| 0x06 | Unsubscribe        | uint8 flags to clear         |
+| 0x10 | Set Mux Settling   | uint32 (cycles)              |
+| 0x11 | Set ADC Sampling   | uint8 index: 0=3c, 1=15c, 2=28c, 3=56c, 4=84c, 5=112c, 6=144c, 7=480c |
+| 0x12 | Get Config         | —                            |
+| 0x13 | Set ADC Re-Reads   | uint8 count (0–10)           |
+| 0x14 | Set ADC Oversample | uint8: 0=off, non-zero=on    |
+| 0x15 | Get Perf           | —                            |
+| 0x16 | Set EMA Alpha      | uint8: 0=off, 1–255 mapped as `value / 255` (α) |
 
 ## Example: Sending a Command
 

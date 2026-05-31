@@ -21,6 +21,7 @@ constexpr uint8_t CMD_GET_CONFIG          = 0x12;
 constexpr uint8_t CMD_SET_ADC_RE_READS    = 0x13;
 constexpr uint8_t CMD_SET_ADC_OVERSAMPLE  = 0x14;
 constexpr uint8_t CMD_GET_PERF            = 0x15;
+constexpr uint8_t CMD_SET_EMA_ALPHA      = 0x16;
 
 struct __attribute__((packed)) CdcFrameHeader {
     uint8_t  sync_lo;
@@ -56,9 +57,10 @@ struct __attribute__((packed)) CdcConfigResponse {
     uint8_t  adc_sampling;
     uint8_t  adc_re_reads;
     uint8_t  adc_oversample;
+    uint8_t  ema_alpha;
     uint16_t crc;
 };
-static_assert(sizeof(CdcConfigResponse) == 15, "CdcConfigResponse padding");
+static_assert(sizeof(CdcConfigResponse) == 16, "CdcConfigResponse padding");
 
 struct __attribute__((packed)) CdcPerfResponse {
     uint8_t  sync_lo;

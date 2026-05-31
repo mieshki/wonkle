@@ -37,11 +37,15 @@ public:
 
 private:
     Cursor find_centroid(const uint16_t* grid);
-    void update_cursor(const Cursor& cursor);
+    void update_cursor(Cursor& cursor);
 
     SensorGrid sensor_grid_;
     Telemetry telemetry_;
     PerformanceProfiler profiler_;
     std::array<uint16_t, 209> grid_;
     uint16_t threshold_ = 2200;
+
+    bool ema_initialized_ = false;
+    float smoothed_x_ = 0.0f;
+    float smoothed_y_ = 0.0f;
 };

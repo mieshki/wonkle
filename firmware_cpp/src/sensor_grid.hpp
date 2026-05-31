@@ -62,6 +62,9 @@ public:
     bool getOversampleEnabled() const { return oversampleEnabled_; }
     void setOversampleEnabled(bool enabled);
 
+    float getEmaAlpha() const { return emaAlpha_; }
+    void setEmaAlpha(float a) { emaAlpha_ = a; }
+
     const ScanTiming& getLastScanTiming() const { return lastScanTiming_; }
 
 private:
@@ -80,6 +83,7 @@ private:
     AdcSampling adcSampling_     = AdcSampling::Cycles3;
     uint8_t     adcReReads_   = 3;
     bool        oversampleEnabled_ = true;
+    float       emaAlpha_        = 0.0f;
 
     ScanTiming  lastScanTiming_;
 

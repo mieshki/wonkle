@@ -20,6 +20,8 @@ void Tablet::init() {
                 static_cast<unsigned>(sensor_grid_.getMuxSettling()),
                 adcSamplingLabel(sensor_grid_.getAdcSampling()),
                 static_cast<unsigned>(sensor_grid_.getAdcReReads()));
+    RTT::printf("Filters: ema_alpha=%.3f\n",
+                static_cast<double>(sensor_grid_.getEmaAlpha()));
 }
 
 void Tablet::tick(bool measure) {
@@ -43,14 +45,32 @@ void Tablet::tick(bool measure) {
     telemetry_.feed_grid(grid_.data(), cursor.x, cursor.y, cursor.valid);
 }
 
-void Tablet::update_cursor(const Cursor& cursor) {
+void Tablet::update_cursor(Cursor& cursor) {
     HidReport report = {0};
+
+    float alpha = sensor_grid_.getEmaAlpha();
+
+    if (alpha > 0.0f) {
+        if (!ema_initialized_ && cursor.valid) {
+            smoothed_x_ = cursor.x;
+            smoothed_y_ = cursor.y;
+            ema_initialized_ = true;
+        } else if (ema_initialized_) {
+            smoothed_x_ = alpha * cursor.x + (1.0f - alpha) * smoothed_x_;
+            smoothed_y_ = alpha * cursor.y + (1.0f - alpha) * smoothed_y_;
+        }
+        cursor.x = smoothed_x_;
+        cursor.y = smoothed_y_;
+    }
+
     if (cursor.valid) {
         uint16_t x_usb = static_cast<uint16_t>(cursor.x * GRID_TO_HID_SCALE / GRID_COLS_MAX);
         uint16_t y_usb = static_cast<uint16_t>(cursor.y * GRID_TO_HID_SCALE / GRID_ROWS_MAX);
         report.flags = HID_IN_RANGE;
         report.x = static_cast<int16_t>(x_usb);
         report.y = static_cast<int16_t>(y_usb);
+    } else if (alpha > 0.0f) {
+        ema_initialized_ = false;
     }
     USB::send_hid_report(reinterpret_cast<const uint8_t*>(&report), sizeof(report));
 }
